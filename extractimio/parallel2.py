@@ -40,6 +40,6 @@ class QueryWorker:
         pass
 
 
-class MultiprocessingVideoIO2:
+class MultiprocessingVideoFrameIO2:
     def __init__(self):
         pass
