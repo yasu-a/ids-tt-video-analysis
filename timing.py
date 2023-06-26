@@ -4,8 +4,8 @@ import pandas as pd
 
 
 def measure(f):
-    repeat = 1
-    number = 5
+    repeat = 5
+    number = 1
     times = timeit.repeat(f, repeat=repeat, number=number)
     df = pd.DataFrame(
         {'num': np.arange(repeat) + 1, 'time': times, 'loop': np.array(times) / number})
