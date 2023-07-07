@@ -1,76 +1,107 @@
-from tqdm import tqdm
-import cv2
+import functools
 import os
-import glob
-import contextlib
-import zipfile
+from typing import Iterable, Union
 
-path = os.path.expanduser(r'~\Desktop/idsttvideos/singles')
-glob_pattern = os.path.join(path, r'**/*.mp4')
-video_path = glob.glob(glob_pattern, recursive=True)[0]
-print(video_path)
-
-ZIP_DEST_BASE_PATH = r'./extract'
-
-def generate_zip_path(video_path):
-    _, video_name = os.path.split(video_path)
-    name, _ = os.path.splitext(video_name)
-    zip_name = f'{name}_extract.zip'
-    zip_path = os.path.join(ZIP_DEST_BASE_PATH, name)
-    return zip_path
-
-# zip_path = generate_zip_path(video_path)
-#
-# with zipfile.ZipFile(zip_path, 'r') as zf:
-#
+import decord
+import numpy as np
 
 
-@contextlib.contextmanager
-def iter_frames(path, *, start=None, end=None, step=None):
-    HEIGHT = 1080
-    WIDTH = 1440
+class VideoFrameReader:
+    def __normalize_slice(self, s: slice) -> slice:
+        start = s.start
+        if start is None:
+            start = 0
 
-    cap = cv2.VideoCapture(path, apiPreference=cv2.CAP_ANY, params=[cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT, cv2.CAP_PROP_FRAME_WIDTH, WIDTH])
+        stop = s.stop
+        if stop is None:
+            stop = self.__frame_count
 
-    if not cap.isOpened():
-        raise ValueError("failed to open video")
+        step = s.step
+        if step is None:
+            step = 1
 
-    def it():
-        i = start or 0
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        spf = 1 / fps
+        return slice(start, stop, step)
+
+    BATCH_MAX_MEMORY_USAGE = 2 ** 29  # ~ 500MB
+
+    @functools.cached_property
+    def __proper_batch_size(self) -> int:
+        nbytes = self.__frame_nbytes or 32
+        max_frames = self.BATCH_MAX_MEMORY_USAGE // nbytes
+        return max(1, max_frames)
+
+    def __iter_batch_indexes(self, frame_indexes):
+        batch_size = self.__proper_batch_size
+
+        i = 0
         while True:
-            if end is not None and i >= end:
+            batch_indexes = frame_indexes[i:i + batch_size]
+            if len(batch_indexes) == 0:
                 break
-            cap.set(cv2.CAP_PROP_POS_FRAMES, i)
-            ok, frame = cap.read()
-            if not ok:
-                break
-            duration = spf * i
-            yield duration, frame
-            i += step or 1
+            yield batch_indexes
+            i += batch_size
 
-    yield cap, it()
+    def __init__(self, video_path):
+        video_path = os.path.normpath(video_path)
+        if not os.path.exists(video_path):
+            raise FileNotFoundError('video not found', video_path)
+        self.__vr = decord.VideoReader(video_path, ctx=decord.cpu(0))
 
-    cap.release()
+        self.__frame_count = len(self.__vr)
+        if self.__frame_count:
+            self.__frame_nbytes = np.product(self.__vr[0].asnumpy().nbytes)
+        else:
+            self.__frame_nbytes = None
 
+    @property
+    def _decord_video_reader(self):
+        return self.__vr
 
-def down_sample(frame, ratio):
-    return cv2.resize(frame, None, None, ratio, ratio, cv2.INTER_LANCZOS4)
+    @property
+    def frame_count(self):
+        return len(self.__vr)
 
+    @property
+    def fps(self):
+        return self.__vr.get_avg_fps()
 
-for rm_path in glob.iglob(r'./extract/*.png'):
-    os.remove(rm_path)
+    def __len__(self):
+        return self.frame_count
 
-start = 0 * 30
-step = 20
-end = 60 * 30
+    def time_to_frame_indexes(self,
+                              time: Union[float, Iterable[float]]) -> np.ndarray:
+        times = self.__vr.get_frame_timestamp(range(self.frame_count))[:, 0]
+        indexes = np.searchsorted(times, time)
+        # Use `np.bitwise_or` so it works both with scalars and numpy arrays.
+        return np.where(
+            (indexes == 0) | (times[indexes] - time <= time - times[indexes - 1]),
+            indexes,
+            indexes - 1
+        )
 
-down_sampling_ratio = 0.5
+    def __iter_frames_by_indexes(self, frame_indexes) -> Iterable[tuple[float, np.ndarray]]:
+        for batch_frame_indexes in self.__iter_batch_indexes(frame_indexes):
+            batch_frame_times = self.__vr.get_frame_timestamp(batch_frame_indexes)[:, 0]
+            batch_frames = self.__vr.get_batch(batch_frame_indexes).asnumpy()
+            for frame_time, frame in zip(batch_frame_times, batch_frames):
+                yield frame_time, frame
 
-with iter_frames(video_path, start=start, end=end, step=step) as (cap, frames):
-    for duration, frame in tqdm(frames):
-        # frame = down_sample(frame, down_sampling_ratio)
-        name = f'{int(duration * 1000):08}.png'
-        dst_path = os.path.join('./extract', name)
-        cv2.imwrite(dst_path, frame)
+    def __iter_frames_by_slice(self, s: slice):
+        s = self.__normalize_slice(s)
+        frame_indexes = np.arange(s.start, s.stop, s.step)
+        yield from self.__iter_frames_by_indexes(frame_indexes)
+
+    def __get_frame_by_index(self, frame_index):
+        return self.__vr[frame_index]
+
+    def __getitem__(self, key: Union[Iterable[int], slice, int]):
+        if isinstance(key, float):
+            raise ValueError('key must be an integer')
+        if isinstance(key, int):
+            return self.__get_frame_by_index(key)
+        if isinstance(key, slice):
+            return self.__iter_frames_by_slice(key)
+        key_arr = np.array(key)
+        if np.issubdtype(key_arr.dtype, np.integer):
+            return self.__iter_batch_indexes(key_arr)
+        raise TypeError('invalid type of key')
