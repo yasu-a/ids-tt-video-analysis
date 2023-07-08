@@ -22,7 +22,7 @@ class VideoFrameReader:
 
         return slice(start, stop, step)
 
-    BATCH_MAX_MEMORY_USAGE = 2 ** 29  # ~ 500MB
+    BATCH_MAX_MEMORY_USAGE = 2 ** 27  # ~ 128MB
 
     @functools.cached_property
     def __proper_batch_size(self) -> int:
