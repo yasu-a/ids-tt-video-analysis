@@ -1,61 +1,96 @@
-import glob
-import os
+# デスクトップの./idsttvideos/singlesの中にある動画から一つを選び
+# その先頭1000フレームまで`out.mp4`に毎`STEP`フレームおきに書き出すサンプル
 
+import glob
+import itertools
+import os
+import time
+import numpy as np
+
+import imageio as iio
+import matplotlib.pyplot as plt
 import cv2
+from tqdm import tqdm
 
 from extract import VideoFrameReader
 
+import frame_processor as fp
+
+from typing import Iterable, Union, Optional, TypeVar
+
+# 動画を見つける
 path = os.path.expanduser(r'~\Desktop/idsttvideos/singles')
 glob_pattern = os.path.join(path, r'**/*.mp4')
 video_path = glob.glob(glob_pattern, recursive=True)[0]
+
+# video_pathに動画のパスが入る
 print(video_path)
 
-cache_base_path = os.path.expanduser(r'~\Desktop/vio_cache')
+# 動画のパスからVideoFrameReaderインスタンスを生成
+vfr = VideoFrameReader(video_path)
+
+
+@fp.unary_mapping_stage
+def gaussian_filter(frame):
+    return cv2.GaussianBlur(frame, (51, 51), 100)
+
+
+@fp.binary_mapping_stage
+def square_diff_two_frames(prev_frame, cur_frame):
+    return np.square(cur_frame - prev_frame)
+
+
+@fp.binary_mapping_stage
+def prod_two_frames(prev_frame, cur_frame):
+    return cur_frame * prev_frame
+
+
+@fp.unary_mapping_stage
+def to_bgr2rgb(frame):
+    return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+
+def clamp(v_max):
+    @fp.unary_mapping_stage
+    def stage(frame):
+        return np.clip(frame / v_max, 0, 1.0 - 1.0 / 256.0)
+
+    return stage
+
+
+# パイプライン生成
+process = fp.FramePipeline([
+    # RGBへ
+    fp.unary_mapper(to_bgr2rgb),
+    # プロデューサ：source
+    fp.FramePipeline.produce('source'),
+    # [0, 256)を[0.0, 1.0)に変換
+    fp.to_float,
+    # ガウスフィルタに通す
+    fp.unary_mapper(gaussian_filter),
+    # 前後のフレームをペアに
+    fp.pair_generator,
+    # ペアの差をとって差分フレームへ
+    fp.binary_mapper(square_diff_two_frames),
+    # 前後の差分フレームをペアに
+    fp.pair_generator,
+    # ペアの積をとる
+    fp.binary_mapper(prod_two_frames),
+    # クランプ処理
+    fp.unary_mapper(clamp(0.001)),
+    # [0.0, 1.0)を[0, 256)に変換
+    fp.to_uint,
+    # プロデューサ：result
+    fp.FramePipeline.produce('result'),
+])
 
 
 def main():
-    vfr = VideoFrameReader(video_path)
+    # フレームのパイプラインを生成
+    START, STOP, STEP = 0, 600, 2
+    it = process(vfr[START:STOP:STEP])
 
-    def pair_producer(it):
-        prev = None
-        for item in it:
-            if prev is not None:
-                yield prev, item
-            prev = item
-
-    import numpy as np
-    from tqdm import tqdm
-
-    def mapper_gauss(frame):
-        return cv2.GaussianBlur(frame, (51, 51), 100)
-
-    def frame_map(fn, it):
-        for i, frame in it:
-            yield i, fn(frame)
-
-    def delta_producer(it, formula):
-        for (ix, fx), (iy, fy) in pair_producer(it):
-            f_delta = formula(fx, fy)
-            yield iy, f_delta
-
-    STEP = 2
-    START = 0
-    END = 60
-
-    it_src = vfr[START:END:STEP]
-
-    it = vfr[START:END:STEP]
-    it = frame_map(mapper_gauss, it)
-    it = delta_producer(it, formula=lambda fx, fy: np.square((fy - fx) / 256.0))
-    it = pair_producer(it)
-    it = tqdm(it, total=(END - START) // STEP)
-
-    fds = []
-    fs = []
-    t = []
-
-    import imageio.v2 as iio
-
+    # 書き出し先の作成
     out = iio.get_writer(
         'out.mp4',
         format='FFMPEG',
@@ -64,30 +99,35 @@ def main():
         codec='h264',
     )
 
+    # 各フレームをパイプライン処理
+    t = []
     tot = []
+    F_STEP = 4
+    for i, products in enumerate(tqdm(it, total=(STOP - START) // STEP)):
+        st, sf = products['source']
+        pt, pf = products['result']
 
-    for i, (((_, f_delta_prev), (frame_time, f_delta)), (_, f_src)) in enumerate(zip(it, it_src)):
-        t.append(frame_time)
+        # パイプラインを通ってきた各フレームに対して処理
+        # print(i, pt, st, pf.shape, sf.shape)
 
-        y = f_delta * f_delta_prev
-        y = (y * 256.0).astype(np.uint8)
+        t.append(st)
 
-        tot.append(y.mean(axis=2).mean(axis=0))
+        tot.append(pf.mean(axis=2).mean(axis=0))
 
-        F_STEP = 4
-        h = f_src[::F_STEP, ::F_STEP].shape[0]
+        h = sf[::F_STEP, ::F_STEP].shape[0]
         tot_vs = np.clip(np.vstack(tot) * 3, 0, 255)[::1, ::10]
         graph = np.zeros((h, tot_vs.shape[1], 3), dtype=np.uint8)
         tot_vs = tot_vs[-h:, :]
-        graph[:tot_vs.shape[0], :tot_vs.shape[1], :] = np.dstack([tot_vs[:tot_vs.shape[0], :tot_vs.shape[1]]] * 3)
+        graph[:tot_vs.shape[0], :tot_vs.shape[1], :] = np.dstack(
+            [tot_vs[:tot_vs.shape[0], :tot_vs.shape[1]]] * 3)
         graph[:, :, [0, 2]] = 0
         graph[tot_vs.shape[0] - 1, :, 0] = 255
         out.append_data(
             cv2.cvtColor(
                 np.concatenate(
                     [
-                        f_src[::F_STEP, ::F_STEP],
-                        y[::F_STEP, ::F_STEP],
+                        sf[::F_STEP, ::F_STEP],
+                        pf[::F_STEP, ::F_STEP],
                         graph
                     ],
                     axis=1
@@ -95,9 +135,11 @@ def main():
                 cv2.COLOR_BGR2RGB)
         )
 
-        if i % 10 == 0:
+        if i % 30 == 0:
             np.save('out.npy', np.vstack(tot))
+    np.save('out.npy', np.vstack(tot))
 
+    # 書き出し先を閉じる
     out.close()
 
 
