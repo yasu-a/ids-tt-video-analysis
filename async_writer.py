@@ -3,32 +3,32 @@ import time
 import imageio as iio
 
 
+def _worker(q: mp.Queue, params: dict):
+    out = iio.get_writer(
+        params['path'],
+        format='FFMPEG',
+        fps=params['fps'],
+        mode='I',
+        codec='h264',
+    )
+
+    while True:
+        if q.empty():
+            time.sleep(0.1)
+        else:
+            frame = q.get(block=False)
+            if frame is None:
+                break
+            out.append_data(frame)
+
+    out.close()
+
+
 class AsyncVideoFrameWriter:
     def __init__(self, path, fps):
         self.__q = mp.Queue()
         params = dict(path=path, fps=fps)
-        self.__p = mp.Process(target=self.__worker, args=(self.__q, params))
-
-    @classmethod
-    def __worker(cls, q: mp.Queue, params: dict):
-        out = iio.get_writer(
-            params['path'],
-            format='FFMPEG',
-            fps=params['fps'],
-            mode='I',
-            codec='h264',
-        )
-
-        while True:
-            if q.empty():
-                time.sleep(0.1)
-            else:
-                frame = q.get(block=False)
-                if frame is None:
-                    break
-                out.append_data(frame)
-
-        out.close()
+        self.__p = mp.Process(target=_worker, args=(self.__q, params))
 
     def write(self, frame):
         self.__q.put(frame)
