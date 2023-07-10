@@ -1,3 +1,4 @@
+import collections
 from typing import Iterable, TypeVar, Callable, Generator
 
 import numpy as np
@@ -21,6 +22,40 @@ def pair_generator(it: Iterable[T]) -> Generator[tuple[T, T], None, None]:
 
 UnaryMapperType = Callable[[T], T]
 BinaryMapperType = Callable[[T, T], T]
+
+EntryType = dict
+
+
+def mapper(window_size=1, center=None):
+    center = center or window_size // 2
+
+    def decorator(fn):
+        def wrapper(entry_it: Iterable[EntryType]):
+            buffer = []
+
+            def buffer_full_filled():
+                return len(buffer) >= window_size
+
+            def append_buffer(item):
+                if buffer_full_filled():
+                    buffer.pop(0)
+                buffer.append(item)
+
+            def split_buffer():
+                nonlocal center
+                left, middle, right = buffer[:center], buffer[center], buffer[center:]
+                return left, middle, right
+
+            for entry in entry_it:
+                append_buffer(entry)
+                if buffer_full_filled():
+                    left, middle, right = split_buffer()
+                    processed_middle = fn(left, middle, right)
+                    yield processed_middle
+
+        return wrapper
+
+    return decorator
 
 
 def unary_mapper(fn: UnaryMapperType):
@@ -105,10 +140,10 @@ class FramePipeline:
 
         def stage_wrapper(fn):
             def wrapper(it):
-                itd = fn(dct['item'] for dct in it)
-                zip(itd, ) # TODO
-                for dct in fn(it):
-                    yield dct['item']
+                # TODO !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                itd = fn(d['item'] for d in it)
+                for dct, processed_item in zip(it, itd):
+                    dct['item'] = processed_item
 
             return wrapper
 
