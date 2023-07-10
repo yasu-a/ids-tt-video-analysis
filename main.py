@@ -126,7 +126,9 @@ def main():
 
             if i % 30 == 0:
                 np.save('out.npy', np.vstack(tot))
-        np.save('out.npy', np.vstack(tot))
+
+        if len(tot) > 0:
+            np.save('out.npy', np.vstack(tot))
 
 
 if __name__ == '__main__':
