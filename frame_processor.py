@@ -1,10 +1,6 @@
-import glob
-import itertools
-import os
-import time
-import numpy as np
+from typing import Iterable, TypeVar, Callable, Generator
 
-from typing import Iterable, Union, Optional, TypeVar, Callable, Generator
+import numpy as np
 
 T = TypeVar('T')
 
@@ -103,19 +99,40 @@ class FramePipeline:
         self.__stages = stages
 
     def __call__(self, it: Iterable[FrameItemType]) -> Iterable[dict[str, FrameItemType]]:
-        it_dct = {}
+        def it_ctx_wrapper(it):
+            for item in it:
+                yield dict(item=item, ctx={})
 
+        def stage_wrapper(fn):
+            def wrapper(it):
+                itd = fn(dct['item'] for dct in it)
+                zip(itd, ) # TODO
+                for dct in fn(it):
+                    yield dct['item']
+
+            return wrapper
+
+        def context_recorder(name):
+            def recorder(it):
+                for dct in it:
+                    dct['ctx'][name] = dct['item']
+                    yield dct
+
+            return recorder
+
+        it = it_ctx_wrapper(it)
         for stage in self.__stages:
             if isinstance(stage, self.StageDirective):
                 if stage.name == 'produce':
-                    it, produced_it = itertools.tee(it)
-                    it_dct[stage.params['product_name']] = produced_it
+                    recorder = context_recorder(stage.params['product_name'])
+                    it = recorder(it)
                 else:
                     raise TypeError('invalid directive', stage)
             else:
+                stage = stage_wrapper(stage)
                 it = stage(it)
 
-        it_dct_key_lst = list(it_dct.keys())
-        for items in zip(*(it_dct[k] for k in it_dct_key_lst)):
-            product = {k: items[i] for i, k in enumerate(it_dct_key_lst)}
+        for dct in it:
+            item, ctx = dct['item'], dct['ctx']
+            product = ctx
             yield product
