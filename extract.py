@@ -5,6 +5,8 @@ from typing import Iterable, Union
 import decord
 import numpy as np
 
+import frame_processor as fp
+
 
 class VideoFrameReader:
     def __normalize_slice(self, s: slice) -> slice:
@@ -79,17 +81,22 @@ class VideoFrameReader:
             indexes - 1
         )
 
-    def __iter_frames_by_indexes(self, frame_indexes) -> Iterable[tuple[float, np.ndarray]]:
+    def __iter_frames_by_indexes(self, frame_indexes, with_index=False) -> Iterable[
+        tuple[float, np.ndarray]]:
         for batch_frame_indexes in self.__iter_batch_indexes(frame_indexes):
             batch_frame_times = self.__vr.get_frame_timestamp(batch_frame_indexes)[:, 0]
             batch_frames = self.__vr.get_batch(batch_frame_indexes).asnumpy()
-            for frame_time, frame in zip(batch_frame_times, batch_frames):
-                yield frame_time, frame
+            for frame_index, frame_time, frame in zip(batch_frame_indexes, batch_frame_times,
+                                                      batch_frames):
+                if with_index:
+                    yield frame_index, frame_time, frame
+                else:
+                    yield frame_time, frame
 
-    def __iter_frames_by_slice(self, s: slice):
+    def __iter_frames_by_slice(self, s: slice, with_index=False):
         s = self.__normalize_slice(s)
         frame_indexes = np.arange(s.start, s.stop, s.step)
-        yield from self.__iter_frames_by_indexes(frame_indexes)
+        yield from self.__iter_frames_by_indexes(frame_indexes, with_index=with_index)
 
     def __get_frame_by_index(self, frame_index):
         return self.__vr[frame_index]
@@ -105,3 +112,11 @@ class VideoFrameReader:
         if np.issubdtype(key_arr.dtype, np.integer):
             return self.__iter_batch_indexes(key_arr)
         raise TypeError('invalid type of key')
+
+    def iter_frame_entries(self, s: slice) -> fp.FrameEntry:
+        for index, position, image in self.__iter_frames_by_slice(s, with_index=True):
+            yield fp.FrameEntry.create_instance(
+                image=image,
+                position=position,
+                index=index,
+            )
