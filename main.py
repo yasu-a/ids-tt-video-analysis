@@ -10,33 +10,52 @@ from async_writer import AsyncVideoFrameWriter
 from extract import VideoFrameReader
 
 
-@fp.unary_mapping_stage
-def gaussian_filter(frame):
-    return cv2.GaussianBlur(frame, (51, 51), 100)
+@fp.stage.each
+@fp.mapper.process(fp.IMAGE)
+@fp.mapper.unary
+def stage_sample_quarter(frame):
+    return frame[::2, ::2]
 
 
-@fp.binary_mapping_stage
-def square_diff_two_frames(prev_frame, cur_frame):
+@fp.stage.each
+@fp.mapper.process(fp.IMAGE)
+@fp.mapper.unary
+def stage_gaussian_filter(frame):
+    return cv2.GaussianBlur(frame, (31, 31), min(frame.shape) / 10)
+
+
+@fp.stage.contiguous
+@fp.mapper.process(fp.IMAGE)
+@fp.mapper.past
+def stage_square_diff_two_frames(prev_frame, cur_frame):
     return np.square(cur_frame - prev_frame)
 
 
-@fp.binary_mapping_stage
-def prod_two_frames(prev_frame, cur_frame):
+@fp.stage.contiguous
+@fp.mapper.process(fp.IMAGE)
+@fp.mapper.past
+def stage_prod_two_frames(prev_frame, cur_frame):
     return cur_frame * prev_frame
 
 
-@fp.unary_mapping_stage
-def bgr2rgb(frame):
+@fp.stage.each
+@fp.mapper.process(fp.IMAGE)
+@fp.mapper.unary
+def stage_bgr2rgb(frame):
     return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
 
-@fp.unary_mapping_stage
-def rgb2bgr(frame):
+@fp.stage.each
+@fp.mapper.process(fp.IMAGE)
+@fp.mapper.unary
+def stage_rgb2bgr(frame):
     return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
 
-def clamp(v_max):
-    @fp.unary_mapping_stage
+def stage_clamp(v_max):
+    @fp.stage.each
+    @fp.mapper.process(fp.IMAGE)
+    @fp.mapper.unary
     def stage(frame):
         return np.clip(frame / v_max, 0, 1.0 - 1.0 / 256.0)
 
@@ -55,37 +74,35 @@ def main():
     # 動画のパスからVideoFrameReaderインスタンスを生成
     vfr = VideoFrameReader(video_path)
 
-    # パイプライン生成
-    process = fp.FramePipeline([
+    # パイプライン構築
+    pipeline = fp.create_pipeline([
+        # 1/4サイズへ
+        stage_sample_quarter,
         # プロデューサ：source
-        fp.FramePipeline.produce('source'),
+        fp.stage.store('source'),
         # BGRへ
-        fp.unary_mapper(rgb2bgr),
+        stage_rgb2bgr,
         # [0, 256)を[0.0, 1.0)に変換
-        fp.to_float,
-        # ガウスフィルタに通す
-        fp.unary_mapper(gaussian_filter),
-        # 前後のフレームをペアに
-        fp.pair_generator,
+        fp.stage.to_double,
+        # # ガウスフィルタに通す
+        # stage_gaussian_filter,
         # ペアの差をとって差分フレームへ
-        fp.binary_mapper(square_diff_two_frames),
-        # 前後の差分フレームをペアに
-        fp.pair_generator,
+        stage_square_diff_two_frames,
         # ペアの積をとる
-        fp.binary_mapper(prod_two_frames),
+        stage_prod_two_frames,
         # クランプ処理
-        fp.unary_mapper(clamp(0.00001)),
+        stage_clamp(0.00002),
         # [0.0, 1.0)を[0, 256)に変換
-        fp.to_uint,
+        fp.stage.to_uint,
         # RGBへ
-        fp.unary_mapper(bgr2rgb),
+        stage_bgr2rgb,
         # プロデューサ：result
-        fp.FramePipeline.produce('result'),
+        fp.stage.store('result'),
     ])
 
     # フレームのパイプラインを生成
-    START, STOP, STEP = 900, 960, 2
-    it = process(vfr[START:STOP:STEP])
+    START, STOP, STEP = 900, 1120, 1
+    it = pipeline(vfr)[START:STOP:STEP]
 
     # 書き出し先の作成
     with AsyncVideoFrameWriter(path='out.mp4', fps=vfr.fps / STEP) as writer:
@@ -93,10 +110,11 @@ def main():
         # 各フレームをパイプライン処理
         t = []
         tot = []
-        F_STEP = 4
-        for i, products in enumerate(tqdm(it, total=(STOP - START) // STEP)):
-            st, sf = products['source']
-            pt, pf = products['result']
+        F_STEP = 2
+        for i, product in enumerate(tqdm(it, total=(STOP - START) // STEP)):
+            st = product.position
+            sf = product['source']
+            pf = product['result']
 
             # パイプラインを通ってきた各フレームに対して処理
             # print(i, pt, st, pf.shape, sf.shape)
