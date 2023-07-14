@@ -63,12 +63,10 @@ def stage_clamp(v_max):
 
 
 def main():
-    # 動画を見つける
-    path = os.path.expanduser(r'~\Desktop/idsttvideos/singles')
-    glob_pattern = os.path.join(path, r'**/*.mp4')
-    video_path = glob.glob(glob_pattern, recursive=True)[0]
-
-    # video_pathに動画のパスが入る
+    # video_pathに動画のパスを設定
+    video_path = os.path.expanduser(
+        r'~/Desktop/idsttvideos/singles\20230205_04_Narumoto_Harimoto.mp4'
+    )
     print(video_path)
 
     # 動画のパスからVideoFrameReaderインスタンスを生成
