@@ -3,9 +3,30 @@ import numpy as np
 import pandas as pd
 
 
-def measure(f):
-    repeat = 5
-    number = 1
+class Timer:
+    def __init__(self, *args, **kwargs):
+        assert len(args) == 0 and len(kwargs) == 0
+
+    def setup(self):
+        pass
+
+    def target(self):
+        pass
+
+    def finalize(self):
+        pass
+
+    @classmethod
+    def measure(cls, *args, _repeat=None, _number=None, **kwargs):
+        job = cls(*args, **kwargs)
+        job.setup()
+        measure(job.target, repeat=_repeat, number=_number)
+        job.finalize()
+
+
+def measure(f, repeat=None, number=None):
+    repeat = repeat or 5
+    number = number or 1
     times = timeit.repeat(f, repeat=repeat, number=number)
     df = pd.DataFrame(
         {'num': np.arange(repeat) + 1, 'time': times, 'loop': np.array(times) / number})
