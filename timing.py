@@ -1,3 +1,4 @@
+import time
 import timeit
 import numpy as np
 import pandas as pd
@@ -10,6 +11,9 @@ class Timer:
     def setup(self):
         pass
 
+    def context(self):
+        return None
+
     def target(self):
         pass
 
@@ -17,11 +21,36 @@ class Timer:
         pass
 
     @classmethod
-    def measure(cls, *args, _repeat=None, _number=None, **kwargs):
-        job = cls(*args, **kwargs)
-        job.setup()
-        measure(job.target, repeat=_repeat, number=_number)
-        job.finalize()
+    def measure(cls, *args, _repeat=5, **kwargs):
+        times = []
+
+        for _ in range(_repeat):
+            job = cls(*args, **kwargs)
+            job.setup()
+
+            start, end = None, None
+
+            def run():
+                nonlocal start, end
+                start = time.perf_counter()
+                job.target()
+                end = time.perf_counter()
+
+            ctx = job.context()
+            if ctx is not None:
+                with ctx:
+                    run()
+            else:
+                run()
+
+            job.finalize()
+
+            times.append(end - start)
+
+        times = np.array(times)
+        mean = times.mean()
+        se = np.std(times, ddof=1) / np.sqrt(len(times))
+        print(f'{mean * 1000:8.3f}ms ± {se * 1000 * 2:8.3f}ms (CI=95%)')
 
 
 def measure(f, repeat=None, number=None):
