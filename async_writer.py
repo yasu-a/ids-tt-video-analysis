@@ -1,4 +1,5 @@
 import multiprocessing as mp
+import os
 import time
 import imageio as iio
 
@@ -29,6 +30,8 @@ def _worker(q: mp.Queue, params: dict):
 
 class AsyncVideoFrameWriter:
     def __init__(self, path, fps):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        
         self.__q = mp.Queue(maxsize=MAX_BACKLOG_FRAMES)
         params = dict(path=path, fps=fps)
         self.__p = mp.Process(target=_worker, args=(self.__q, params))
