@@ -62,3 +62,6 @@ class Product:
 
     def __getitem__(self, stack_key):
         return self.__entry.stack[stack_key]
+
+    def __str__(self):
+        return f'Product(img: {self.__entry.image.shape}, pos={self.__entry.position}, idx={self.__entry.index})'
