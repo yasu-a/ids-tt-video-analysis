@@ -19,7 +19,9 @@ def get_latest_path(target):
     return os.path.join('./out', target_name)
 
 
-SRC_NPY_PATH = get_latest_path('20230205_04_Narumoto_Harimoto')
+VIDEO_NAME = '20230205_04_Narumoto_Harimoto'
+
+SRC_NPY_PATH = get_latest_path(VIDEO_NAME)
 print(SRC_NPY_PATH)
 
 while True:
@@ -31,14 +33,58 @@ while True:
     break
     time.sleep(0.1)
 motion, ts = npz['arr_0'], npz['arr_1']
+CLAMP = 4000
+motion = motion[:CLAMP].copy()
+ts = ts[:CLAMP].copy()
 
 print(motion.shape, ts.shape)
 
 import seaborn as sns
 
-plt.figure(figsize=(25, 5))
-sns.heatmap(motion[::5].T)
-plt.show()
+import train_input
+
+train_input_df = train_input.load(f'./train/iDSTTVideoAnalysis_{VIDEO_NAME}.csv')
+
+
+def rally_mask():
+    s, e = train_input_df.start.to_numpy(), train_input_df.end.to_numpy()
+    r = np.logical_and(s <= ts[:, None], ts[:, None] <= e).sum(axis=1)
+    r = r > 0
+    return r
+
+
+print(ts.min(), ts.max())
+
+fig, axes = plt.subplots(
+    6, 1,
+    figsize=(100, 15),
+    gridspec_kw={'height_ratios': [1, 5, 5, 5, 5, 1]},
+    sharex=True
+)
+
+sns.heatmap(motion.T, ax=axes[1], cbar=False)
+axes[1].set_title(VIDEO_NAME)
+
+m = rally_mask()
+sns.heatmap(m[None, :], ax=axes[0], cbar=False)
+sns.heatmap(m[None, :], ax=axes[-1], cbar=False)
+
+
+def motion_center():
+    N, H = motion.shape[0], motion.shape[1]
+    index_vec = np.arange(H)
+    center = []
+    for i in range(N):
+        a = motion[i]
+        rank_percent = np.argsort(a) / H
+        mask = (0.9 < rank_percent) & (rank_percent < 0.95)
+        c = index_vec[mask].mean()
+        center.append(c)
+    center = np.array(center).round(0).astype(int)
+    return center
+
+
+axes[2].plot(-motion_center(), lw=0.5)
 
 import scipy.ndimage
 
@@ -47,38 +93,34 @@ def smooth(a, sigma=None):
     return scipy.ndimage.gaussian_filter1d(a, sigma or 10)
 
 
-quarter_size = motion.shape[1] // 4
-motion_quarter_left, motion_quarter_right = motion[:, :quarter_size], motion[:, -quarter_size:]
+quarter_size = motion.shape[1] // 3
+dct_motion = dict(
+    full=motion,
+    left=motion[:, :quarter_size],
+    middle=motion[:, quarter_size:-quarter_size],
+    right=motion[:, -quarter_size:]
+)
 
-full_stds = np.std(motion, axis=1)
-left_stds = np.std(motion_quarter_left, axis=1)
-right_stds = np.std(motion_quarter_right, axis=1)
 
-plt.figure()
-plt.plot(ts, full_stds, label='full')
-plt.plot(ts, left_stds, label='left')
-plt.plot(ts, right_stds, label='right')
-plt.title('std')
-plt.legend()
+def map_kinds(f):
+    return {k: f(motion_) for k, motion_ in dct_motion.items()}
+
+
+for label, v in map_kinds(lambda m: np.std(m, axis=1)).items():
+    axes[3].plot(v, lw=0.5, label=label)
+axes[3].set_title('std')
+axes[3].legend()
+axes[3].grid()
+
+for label, v in map_kinds(lambda m: np.mean(m, axis=1)).items():
+    axes[4].plot(v, lw=0.5, label=label)
+axes[4].set_title('mean')
+axes[4].legend()
+axes[4].grid()
+axes[4].set_yscale('log')
+
+axes[-1].set_xticklabels(ts[axes[-1].get_xticks().astype(int)].round(1))
+
 plt.show()
 
 sys.exit(0)
-
-peaks = np.percentile(motion, 95, axis=1)
-peaks = np.argmin(np.square(peaks[:, None] - motion), axis=1)
-peaks = smooth(peaks)
-plt.figure()
-plt.plot(ts, peaks)
-plt.title('95% max')
-plt.show()
-
-means = np.percentile(motion, 40, axis=1)
-means = smooth(means)
-plt.figure()
-plt.plot(ts, means)
-plt.title('mean')
-plt.show()
-#
-# for i, t in enumerate(ts):
-#     frame_motion = motion[i]
-#     print(frame_motion)

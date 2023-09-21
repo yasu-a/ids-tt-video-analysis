@@ -7,6 +7,8 @@ import numpy as np
 
 import frame_processor as fp
 
+from tqdm import tqdm
+
 
 class VideoFrameReader:
     def __normalize_slice(self, s: slice) -> slice:
@@ -24,7 +26,7 @@ class VideoFrameReader:
 
         return slice(start, stop, step)
 
-    BATCH_MAX_MEMORY_USAGE = 2 ** 26  # ~ 128MB
+    BATCH_MAX_MEMORY_USAGE = 2 ** 27  # ~ 256MB
 
     @functools.cached_property
     def __proper_batch_size(self) -> int:
@@ -36,12 +38,14 @@ class VideoFrameReader:
         batch_size = self.__proper_batch_size
 
         i = 0
+        bar = tqdm(frame_indexes)
         while True:
             batch_indexes = frame_indexes[i:i + batch_size]
             if len(batch_indexes) == 0:
                 break
             yield batch_indexes
             i += batch_size
+            bar.update(batch_size)
 
     def __init__(self, video_path):
         video_path = os.path.normpath(video_path)
@@ -81,8 +85,8 @@ class VideoFrameReader:
             indexes - 1
         )
 
-    def __iter_frames_by_indexes(self, frame_indexes, with_index=False) -> Iterable[
-        tuple[float, np.ndarray]]:
+    def __iter_frames_by_indexes(self, frame_indexes, with_index=False) \
+            -> Iterable[tuple[float, np.ndarray]]:
         for batch_frame_indexes in self.__iter_batch_indexes(frame_indexes):
             batch_frame_times = self.__vr.get_frame_timestamp(batch_frame_indexes)[:, 0]
             batch_frames = self.__vr.get_batch(batch_frame_indexes).asnumpy()

@@ -11,6 +11,9 @@ from async_writer import AsyncVideoFrameWriter
 from extract import VideoFrameReader
 
 
+# FIXME: THIS SCRIPT MAY HAVE A MEMORY LEAK
+
+
 @fp.stage.each
 @fp.mapper.process(fp.IMAGE)
 @fp.mapper.unary
@@ -109,7 +112,7 @@ def main():
     tot = []
     tss = []
     DST_PATH = f'out/{video_name}_{output_timestamp}.npz'
-    for i, product in enumerate(tqdm(it, total=(STOP - START) // STEP)):
+    for i, product in enumerate(it):
         tot.append(product['result'].mean(axis=2).mean(axis=0))
         tss.append(product.position)
         if (i + 1) % 30 == 0:
