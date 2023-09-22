@@ -163,6 +163,7 @@ for i in tqdm(range(len(plot_lst))):
     args = ax, *args
     f(*args)
 
+plt.tight_layout()
 plt.savefig('out.png')
 plt.show()
 
