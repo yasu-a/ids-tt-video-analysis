@@ -45,9 +45,12 @@ def main():
             bar.set_description(f'pos={int(pos) // 60}:{int(pos) % 60:02}.{int((pos - int(pos)) * 1000):03}')
 
     def pre_process(frame):
-        image = frame['image'][::2, ::2] / 256.0
+        image = frame['image'][::2, ::2]
+        image = cv2.GaussianBlur(image, )
+        image =  image / 256.0
         assert image.max() < 1.0, image.max()
         return update_image(frame, image)
+
 
     def iter_pairs(it):
         prev = None
