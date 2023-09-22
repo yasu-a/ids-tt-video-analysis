@@ -18,7 +18,7 @@ def _worker(q: mp.Queue, params: dict):
 
     while True:
         if q.empty():
-            time.sleep(0.01)
+            time.sleep(0.1)
         else:
             frame = q.get(block=False)
             if frame is None:
