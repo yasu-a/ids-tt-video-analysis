@@ -52,7 +52,7 @@ def main():
         tot = []
 
         for i, (((_, f_delta_prev), (i_frame, f_delta)), (_, f_src)) in enumerate(zip(it, it_src)):
-            t.append(vio.pos(i_frame))
+            t.append(vio.timestamp(i_frame))
 
             y = f_delta * f_delta_prev
             y = (y * 256.0).astype(np.uint8)
