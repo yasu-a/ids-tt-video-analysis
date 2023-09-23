@@ -1,4 +1,7 @@
+import datetime
 import glob
+import itertools
+import json
 import os
 import time
 
@@ -8,6 +11,8 @@ import numpy as np
 from tqdm import tqdm
 
 import async_writer
+
+MEMMAP_PATH = 'G:\iDSTTVideoFrameDump'
 
 
 def main():
@@ -25,114 +30,168 @@ def main():
     print(frame_count, frame_rate)
     STEP = 5
 
-    def iter_frames():
-        frame_index = 0
-        bar = tqdm(np.arange(0, frame_count, STEP))
-        while True:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
-            ret, frame = cap.read()
-            if not ret:
+    def iter_frames(time_start=None, time_end=None):
+
+        def retrieve_frame():
+            _, image = cap.retrieve()
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            return image
+
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        stack = []
+        center_index = 0
+        center_timestamp = None
+
+        yield_count = 0
+
+        def flag_it():
+            pattern = np.zeros(STEP, dtype=int)
+            pattern[:3] = [1, 2, 3]
+
+            for index in itertools.count():
+                flag = pattern[index % STEP]
+                yield index, flag
+
+        bar = tqdm(flag_it(), total=frame_count)
+        for index, flag in bar:
+            if not cap.grab():
                 break
-            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            pos = frame_index / frame_rate
-            yield dict(
-                image=image,
-                pos=pos,
-                index=frame_index
-            )
-            frame_index += STEP
-            bar.update(1)
-            bar.set_description(f'pos={int(pos) // 60}:{int(pos) % 60:02}.{int((pos - int(pos)) * 1000):03}')
 
-    def pre_process(frame):
-        image = frame['image'][::2, ::2]
-        image = cv2.GaussianBlur(image, )
-        image =  image / 256.0
+            timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+            bar.set_description(f'{datetime.timedelta(seconds=timestamp)!s} {yield_count:5}')
+
+            if time_end is not None and time_end < timestamp:
+                break
+            if time_start is not None and timestamp < time_start:
+                continue
+
+            if flag == 1 and len(stack) == 0:
+                stack.append(retrieve_frame())
+            elif flag == 2 and len(stack) == 1:
+                stack.append(retrieve_frame())
+                center_index = index
+                center_timestamp = timestamp
+            elif flag == 3 and len(stack) == 2:
+                stack.append(retrieve_frame())
+                yield_count += 1
+                yield dict(
+                    prev_image=stack[0],
+                    image=stack[1],
+                    next_image=stack[2],
+                    timestamp=center_timestamp,
+                    center_index=center_index
+                )
+                stack.clear()
+
+    def update_image(src, **kwargs):
+        d = dict(src)
+        d.update(kwargs)
+        return d
+
+    def vectorize_image_set(image_mapper):
+        def frame_process(frame):
+            dct = {}
+            for k in ('prev_image', 'image', 'next_image'):
+                if frame[k] is None:
+                    continue
+                dct[k] = image_mapper(frame[k])
+            return update_image(frame, **dct)
+
+        return frame_process
+
+    @vectorize_image_set
+    def pre_process(image):
+        image = cv2.resize(image, None, fx=0.3, fy=0.3)
+        image = image / 256.0
         assert image.max() < 1.0, image.max()
-        return update_image(frame, image)
+        return image
 
-
-    def iter_pairs(it):
-        prev = None
-        for current in it:
-            if prev is not None:
-                yield prev, current
-            prev = current
-
-    def update_image(src, new_image):
-        return dict(
-            image=new_image,
-            pos=src['pos'],
-            index=src['index']
-        )
+    @vectorize_image_set
+    def blur(image):
+        image = cv2.GaussianBlur(image, (3, 3), 1)
+        return image
 
     def scale(n):
-        def f(frame):
-            image = frame['image'] * n
-            image = np.clip(image, 0.0, 1.0 - 1e-6)
-            return update_image(frame, image)
+        @vectorize_image_set
+        def f(image):
+            return np.clip(image * n, 0.0, 1.0 - 1e-6)
 
         return f
 
-    def diff_two_frames(args):
-        prev, current = args
-        diff = np.square(current['image'] - prev['image'])
-        return update_image(current, diff)
+    def remove_side(frame):
+        return update_image(frame, prev_image=None, next_image=None)
 
-    def prod_two_frames(args):
-        prev, current = args
-        prod = np.sqrt(prev['image'] * current['image'])
-        return update_image(current, prod)
+    def diff_frames(frame):
+        x, y, z = frame['prev_image'], frame['image'], frame['next_image']
+        image = np.sqrt(np.sqrt(np.square(y - x) * np.square(z - y)))
+        return update_image(frame, image=image)
 
-    def head(args):
-        return args[1]
+    def time_filter(f):
+        def wrapper(it):
+            for frame in it:
+                ts = frame['timestamp']
+                if f(ts):
+                    yield frame
 
-    it = iter_frames()
+        return wrapper
+
+    it = iter_frames()  # time_start=21, time_end=105
     it = map(pre_process, it)
-    it = iter_pairs(it)
-    it = map(diff_two_frames, it)
-    it = iter_pairs(it)
-    it = map(prod_two_frames, it)
-    it = map(scale(5000.0), it)
+    it = map(diff_frames, it)
+    it = map(remove_side, it)
+    it = map(blur, it)
+    it = map(scale(5.0), it)
 
     with async_writer.AsyncVideoFrameWriter(
             './main_diff_generator_bug_fix_out.mp4',
             fps=frame_rate / STEP
     ) as writer:
-        tot_v = []
-        tot_h = []
+        # tot_v = []
+        # tot_h = []
         tss = []
+        frames = []
 
         DST_PATH = f'out/{video_name}_{output_timestamp}.npz'
 
         def dump():
-            np.savez(DST_PATH, tot_v, tot_h, tss)
+            if len(tss) == 0:
+                return
+
+            # np.savez(DST_PATH, np.stack(tot_v), np.stack(tot_h), np.array(tss))
+            frames_map = np.memmap(
+                os.path.join(MEMMAP_PATH, 'frames.map'),
+                mode='w+',
+                dtype=np.uint8,
+                shape=(len(frames), *frames[0].shape)
+            )
+            frames_map[:, :, :, :] = frames
+
+            tss_map = np.memmap(
+                os.path.join(MEMMAP_PATH, 'tss.map'),
+                mode='w+',
+                dtype=np.float32,
+                shape=(len(tss),)
+            )
+            tss_map[:] = tss
+
+            with open(os.path.join(MEMMAP_PATH, 'shape.json'), 'w') as f:
+                json.dump({
+                    'frames': frames_map.shape,
+                    'tss': tss_map.shape
+                }, f, indent=2)
 
         for i, frame in enumerate(it):
             img = frame['image']
-            tot_v.append(img.mean(axis=2).mean(axis=0))
-            tot_h.append(img.mean(axis=2).mean(axis=1))
-            tss.append(frame['pos'])
-            if (i + 1) % 10 == 0:
+            # tot_v.append(img.mean(axis=2).mean(axis=0))
+            # tot_h.append(img.mean(axis=2).mean(axis=1))
+            tss.append(frame['timestamp'])
+            frames.append(np.clip((img * 256.0).astype(int), 0, 255).astype(np.uint8))
+            if (i + 1) % 128 == 0:
                 dump()
 
-            a = frame['image'] * 256.0
-            assert np.all(a < 256.0)
-            writer.write(a.astype(np.uint8))
+            writer.write(frames[-1])
 
         dump()
-
-
-# # 各フレームをパイプライン処理
-# tot = []
-# tss = []
-#
-# for i, product in enumerate(it):
-#     tot.append(product['result'].mean(axis=2).mean(axis=0))
-#     tss.append(product.position)
-#     if (i + 1) % 30 == 0:
-#         np.savez(DST_PATH, np.vstack(tot), np.array(tss))
-# np.savez(DST_PATH, np.vstack(tot), np.array(tss))
 
 
 if __name__ == '__main__':
