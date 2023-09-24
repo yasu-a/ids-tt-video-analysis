@@ -126,72 +126,85 @@ def main():
         image = np.sqrt(np.sqrt(np.square(y - x) * np.square(z - y)))
         return update_image(frame, image=image)
 
-    def time_filter(f):
-        def wrapper(it):
-            for frame in it:
-                ts = frame['timestamp']
-                if f(ts):
-                    yield frame
+    def dump_image(dct_key):
+        def f(src):
+            assert isinstance(src, dict), type(src)
+            src[dct_key] = src['image'].copy()
+            return src
 
-        return wrapper
+        return f
 
     it = iter_frames()  # time_start=21, time_end=105
     it = map(pre_process, it)
+    it = map(dump_image('original'), it)
     it = map(diff_frames, it)
     it = map(remove_side, it)
     it = map(blur, it)
     it = map(scale(5.0), it)
 
-    with async_writer.AsyncVideoFrameWriter(
-            './main_diff_generator_bug_fix_out.mp4',
-            fps=frame_rate / STEP
-    ) as writer:
-        # tot_v = []
-        # tot_h = []
-        tss = []
-        frames = []
+    # with async_writer.AsyncVideoFrameWriter(
+    #         './main_diff_generator_bug_fix_out.mp4',
+    #         fps=frame_rate / STEP
+    # ) as writer:
+    # tot_v = []
+    # tot_h = []
+    tss = []
+    originals = []
+    motions = []
 
-        DST_PATH = f'out/{video_name}_{output_timestamp}.npz'
+    DST_PATH = f'out/{video_name}_{output_timestamp}.npz'
 
-        def dump():
-            if len(tss) == 0:
-                return
+    def dump():
+        if len(tss) == 0:
+            return
 
-            # np.savez(DST_PATH, np.stack(tot_v), np.stack(tot_h), np.array(tss))
-            frames_map = np.memmap(
-                os.path.join(MEMMAP_PATH, 'frames.map'),
-                mode='w+',
-                dtype=np.uint8,
-                shape=(len(frames), *frames[0].shape)
-            )
-            frames_map[:, :, :, :] = frames
+        # np.savez(DST_PATH, np.stack(tot_v), np.stack(tot_h), np.array(tss))
+        originals_map = np.memmap(
+            os.path.join(MEMMAP_PATH, 'originals.map'),
+            mode='w+',
+            dtype=np.uint8,
+            shape=(len(originals), *originals[0].shape)
+        )
+        originals_map[:, :, :, :] = originals
 
-            tss_map = np.memmap(
-                os.path.join(MEMMAP_PATH, 'tss.map'),
-                mode='w+',
-                dtype=np.float32,
-                shape=(len(tss),)
-            )
-            tss_map[:] = tss
+        motions_map = np.memmap(
+            os.path.join(MEMMAP_PATH, 'motions.map'),
+            mode='w+',
+            dtype=np.uint8,
+            shape=(len(motions), *motions[0].shape)
+        )
+        motions_map[:, :, :, :] = motions
 
-            with open(os.path.join(MEMMAP_PATH, 'shape.json'), 'w') as f:
-                json.dump({
-                    'frames': frames_map.shape,
-                    'tss': tss_map.shape
-                }, f, indent=2)
+        tss_map = np.memmap(
+            os.path.join(MEMMAP_PATH, 'tss.map'),
+            mode='w+',
+            dtype=np.float32,
+            shape=(len(tss),)
+        )
+        tss_map[:] = tss
 
-        for i, frame in enumerate(it):
-            img = frame['image']
-            # tot_v.append(img.mean(axis=2).mean(axis=0))
-            # tot_h.append(img.mean(axis=2).mean(axis=1))
-            tss.append(frame['timestamp'])
-            frames.append(np.clip((img * 256.0).astype(int), 0, 255).astype(np.uint8))
-            if (i + 1) % 128 == 0:
-                dump()
+        with open(os.path.join(MEMMAP_PATH, 'shape.json'), 'w') as f:
+            json.dump({
+                'originals': originals_map.shape,
+                'motions': motions_map.shape,
+                'tss': tss_map.shape
+            }, f, indent=2)
 
-            writer.write(frames[-1])
+    def to_uint8(a):
+        return np.clip((a * 256.0).astype(int), 0, 255).astype(np.uint8)
 
-        dump()
+    for i, frame in enumerate(it):
+        img = frame['image']
+        originals.append(to_uint8(frame['original']))
+        tss.append(frame['timestamp'])
+        motions.append(to_uint8(img))
+
+        if (i + 1) % 128 == 0:
+            dump()
+
+        # writer.write(frames[-1])
+
+    dump()
 
 
 if __name__ == '__main__':
