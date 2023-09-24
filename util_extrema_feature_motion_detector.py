@@ -37,6 +37,11 @@ class ExtremaFeatureMotionDetector:
         return fil
 
     def _process_mean(self, motion_image):
+        # return scipy.ndimage.median_filter(
+        #     motion_image,
+        #     size=np.array(motion_image.shape) // self.__p_mean_conv_win_size_factor,
+        #     mode='constant'
+        # )
         return scipy.ndimage.convolve(
             motion_image,
             weights=self._mean_conv_filter(motion_image.shape),
@@ -98,8 +103,8 @@ class ExtremaFeatureMotionDetector:
         motion_a, motion_b = motion_images
         original_a, original_b = original_images
 
-        motion_a = self._process_input(motion_a).max(axis=2)
-        motion_b = self._process_input(motion_b).max(axis=2)
+        motion_a = self._process_input(motion_a).mean(axis=2)
+        motion_b = self._process_input(motion_b).mean(axis=2)
         original_a = self._process_input(original_a)
         original_b = self._process_input(original_b)
 
@@ -122,7 +127,9 @@ class ExtremaFeatureMotionDetector:
         )
 
         dist_mat = self._compare_key_batches(key_img_a, key_img_b)
-        matches = [tuple(x) for x in self._find_mutual_best_match(dist_mat)]
+        matches = self._find_mutual_best_match(dist_mat)
+
+        cx, cy = self.__c_rect[0].start, self.__c_rect[1].start
 
         return dict(
             matches=matches,
@@ -130,19 +137,23 @@ class ExtremaFeatureMotionDetector:
             key_img_b=key_img_b,
             dist_mat=dist_mat,
             motion_a_local_max=motion_a_local_max,
-            motion_b_local_max=motion_b_local_max
+            motion_b_local_max=motion_b_local_max,
+            src=motion_a_local_max[matches[:, 0]] + [cx, cy],
+            dst=motion_b_local_max[matches[:, 1]] + [cx, cy]
         )
 
 
 def main():
     from util import motions, originals
 
-    i = 191
+    i = 210
     motion_images = motions[i], motions[i + 1]
     original_images = originals[i], originals[i + 1]
 
+    rect = slice(50, 250), slice(100, 300)
+
     detector = ExtremaFeatureMotionDetector(
-        detection_region_rect=(slice(50, 250), slice(100, 300)),
+        detection_region_rect=rect,
         mean_conv_win_size_factor=32,
         motion_local_max_distance_factor=32,
         motion_local_max_thresh=0.03,
@@ -157,18 +168,45 @@ def main():
     dist_mat = result['dist_mat']
     motion_a_local_max = result['motion_a_local_max']
     motion_b_local_max = result['motion_b_local_max']
+    src, dst = result['src'], result['dst']
 
     print(matches)
 
     import matplotlib.pyplot as plt
+
+    fig = plt.figure()
+
+    import matplotlib.animation as animation
+
+    def animate(i):
+        ax = fig.gca()
+        ax.cla()
+
+        img = motion_images[i]
+        for s, d in zip(src, dst):
+            ax.arrow(
+                s[1],
+                s[0],
+                d[1] - s[1],
+                d[0] - s[0],
+                color='red',
+                width=1
+            )
+        ax.imshow(img)
+
+    ani = animation.FuncAnimation(fig, animate, interval=500, frames=2, blit=False, save_count=50)
+
+    ani.save('anim.gif')
+
     from tqdm import tqdm
 
+    matches_tuple = [tuple(x) for x in matches]
     fig, axes = plt.subplots(len(key_img_a) + 2, len(key_img_b) + 2, figsize=(40, 40))
     for i in tqdm(range(len(key_img_a))):
         for j in range(len(key_img_b)):
             axes[i + 2, j + 2].bar([0], [dist_mat[i, j]])
             axes[i + 2, j + 2].set_ylim(0, 1)
-            if (i, j) in matches:
+            if (i, j) in matches_tuple:
                 axes[i + 2, j + 2].scatter([0], [0.5], color='red', s=500)
 
     for i in range(len(key_img_a)):
