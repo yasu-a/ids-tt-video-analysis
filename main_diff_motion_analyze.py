@@ -8,219 +8,90 @@ import util
 import json
 import os
 
+from util import motions, originals, tss
 import numpy as np
 
 np.set_printoptions(suppress=True)
 
-from main_diff_generator_bug_fix import MEMMAP_PATH
 from tqdm import tqdm
 import skimage.feature
 
+from util_extrema_feature_motion_detector import ExtremaFeatureMotionDetector
 
-def load():
-    motions = np.memmap(
-        os.path.join(MEMMAP_PATH, 'motions.map'),
-        mode='r',
-        dtype=np.uint8
-    )
-    originals = np.memmap(
-        os.path.join(MEMMAP_PATH, 'originals.map'),
-        mode='r',
-        dtype=np.uint8
-    )
-    tss = np.memmap(
-        os.path.join(MEMMAP_PATH, 'tss.map'),
-        mode='r',
-        dtype=np.float32
-    )
+RECT_TEST = False
 
-    with open(os.path.join(MEMMAP_PATH, 'shape.json'), 'r') as f:
-        shape_json = json.load(f)
+rect = slice(70, 245), slice(180, 255)  # height, width
+# height: 奥の選手の頭から手前の選手の足がすっぽり入るように
+# width: ネットの部分の卓球台の幅に合うように
 
-    motions = motions.reshape(shape_json['motions'])
-    originals = originals.reshape(shape_json['originals'])
-    tss = tss.reshape(shape_json['tss'])
+if RECT_TEST:
+    plt.figure()
+    plt.imshow(originals[110])
+    plt.hlines(rect[0].start, rect[1].start, rect[1].stop, colors='white')
+    plt.hlines(rect[0].stop, rect[1].start, rect[1].stop, colors='white')
+    plt.vlines(rect[1].start, rect[0].start, rect[0].stop, colors='white')
+    plt.vlines(rect[1].stop, rect[0].start, rect[0].stop, colors='white')
+    plt.show()
 
-    return motions, originals, tss
+w = rect[1].stop - rect[1].start
+aw = int(w * 1.0)
+rect = slice(rect[0].start, rect[0].stop), slice(rect[1].start - aw, rect[1].stop + aw)
 
+if RECT_TEST:
+    plt.figure()
+    plt.imshow(originals[110])
+    plt.hlines(rect[0].start, rect[1].start, rect[1].stop, colors='white')
+    plt.hlines(rect[0].stop, rect[1].start, rect[1].stop, colors='white')
+    plt.vlines(rect[1].start, rect[0].start, rect[0].stop, colors='white')
+    plt.vlines(rect[1].stop, rect[0].start, rect[0].stop, colors='white')
+    plt.show()
 
-motions, originals, tss = load()
+    sys.exit(0)
 
-print(f'{motions.shape=} {originals.shape=} {tss.shape=}')
-
-RECT = slice(50, 250), slice(100, 300)  # height, width
-
-MEAN_CONV_WIN_SIZE_FACTOR = 32
-_mean_conv_win_shape = np.array(motions[0].shape)[:-1] // MEAN_CONV_WIN_SIZE_FACTOR
-mean_conv_win = np.ones(_mean_conv_win_shape, dtype=np.float32)
-mean_conv_win = mean_conv_win / mean_conv_win.sum()
-
-
-def process_mean(fr):
-    fr_mean = scipy.ndimage.convolve(
-        fr,
-        weights=mean_conv_win,
-        mode='constant',
-    )
-
-    return fr_mean
-
-
-def process_frame_general(fr):
-    fr = fr.astype(np.float32) / 256.0
-    fr = fr[RECT[0], RECT[1], :]
-    return fr
-
-
-LOCAL_MAX_DISTANCE_FACTOR = 32
-LOCAL_MAX_THRESH = 0.03
-
-
-def local_max(img):
-    points = skimage.feature.peak_local_max(
-        img,
-        min_distance=max(img.shape) // LOCAL_MAX_DISTANCE_FACTOR
-    )
-    return points[img[tuple(points.T)] > LOCAL_MAX_THRESH]
-    # return points[[img[tuple(points.T)].argmax()]]
-
-
-i = 191
-motion_a = process_frame_general(motions[i]).max(axis=2)
-motion_b = process_frame_general(motions[i + 1]).max(axis=2)
-original_a = process_frame_general(originals[i])
-original_b = process_frame_general(originals[i + 1])
-motion_a_mean = process_mean(motion_a)
-motion_b_mean = process_mean(motion_b)
-
-motion_a_local_max = local_max(motion_a_mean)
-motion_b_local_max = local_max(motion_b_mean)
-
-# fig, axes = plt.subplots(3, 2, figsize=(10, 10))
-# axes = axes.flatten()
-# for ax, img in zip(axes,
-#                    [motion_a, motion_b, original_a, original_b, motion_a_mean, motion_b_mean]):
-#     ax.imshow(img)
-#
-# axes[4].scatter(motion_a_local_max[:, 1], motion_a_local_max[:, 0], color='red', marker='x',
-#                 alpha=0.7)
-# axes[5].scatter(motion_b_local_max[:, 1], motion_b_local_max[:, 0], color='red', marker='x',
-#                 alpha=0.7)
-# fig.show()
-
-KEY_IMAGE_SIZE = 32 // 2
-
-key_img_a = util.extract_frames_around(
-    original_a,
-    x=motion_a_local_max[:, 1],
-    y=motion_a_local_max[:, 0],
-    size=KEY_IMAGE_SIZE
-)
-key_img_b = util.extract_frames_around(
-    original_b,
-    x=motion_b_local_max[:, 1],
-    y=motion_b_local_max[:, 0],
-    size=KEY_IMAGE_SIZE
+detector = ExtremaFeatureMotionDetector(
+    rect
 )
 
+frames = []
+sources = []
+destinations = []
+for i in tqdm(range(8000)):
+    motion_images = motions[i], motions[i + 1]
+    original_images = originals[i], originals[i + 1]
+    result = detector.compute(original_images, motion_images)
+    if result is None:
+        src, dst = [], []
+    else:
+        src, dst = result['src'], result['dst']
+    frames.append(motions[i])
+    sources.append(src)
+    destinations.append(dst)
 
-# def process_image(img):
-#     r, g, b = img[:, :, 0], img[:, :, 1], img[:, :, 2]
-#     # gs = img.mean(axis=2)
-#     targets = [r, g, b]
-#     total_diffs = []
-#     for t in targets:
-#         diff_1 = np.abs(t[1:, 1:] - t[:-1, 1:])
-#         diff_2 = np.abs(t[1:, 1:] - t[1:, :-1])
-#         total_diff = (diff_1 + diff_2) / 2
-#         total_diffs.append(total_diff[..., None])
-#     return np.concatenate(total_diffs, axis=2)
+fig = plt.figure()
 
-
-def compare_images(images_a, images_b):
-    def split_3x3(a):
-        n = a.shape[0] // 3  # assuming t.shape[0] == t.shape[1]
-        m = n * 2
-        slices = slice(None, n), slice(n, m), slice(m, None)
-        splits = [a[s1, s2] for s1 in slices for s2 in slices]
-        return splits
-
-    def extract_feature(img):
-        r, g, b = img[:, :, 0], img[:, :, 1], img[:, :, 2]
-        feature = []
-        for t in [r, g, b]:
-            for p in split_3x3(t):
-                hist, _ = np.histogram(p, bins=16, range=(0, 1))
-                feature.append(hist)
-        total_feature = np.concatenate(feature)
-        return total_feature / total_feature.sum()
-
-    feature_a = list(map(extract_feature, images_a))
-    feature_b = list(map(extract_feature, images_b))
-
-    from sklearn.metrics.pairwise import cosine_similarity
-
-    dist_mat = 1 - np.clip(cosine_similarity(feature_a, feature_b), 0, 1)
-
-    return dist_mat
+import matplotlib.animation as animation
 
 
-MUTUAL_MATCH_MAX_DISTANCE = 0.3
+def animate(j):
+    ax = fig.gca()
+    ax.cla()
+
+    for s, d in zip(sources[j], destinations[j]):
+        ax.arrow(
+            s[1],
+            s[0],
+            d[1] - s[1],
+            d[0] - s[0],
+            color='red',
+            width=1
+        )
+    ax.imshow(frames[j])
 
 
-def find_mutual_best_match(dist_mat):
-    best_forward = dist_mat.argmin(axis=1)  # x to y (1st dim to 2nd dim)
-    x_index = np.arange(dist_mat.shape[0])
-    best_backward = dist_mat.argmin(axis=0)  # y to x
-    y_index = np.arange(dist_mat.shape[1])
+ani = animation.FuncAnimation(fig, animate, interval=100, frames=len(frames), blit=False,
+                              save_count=50)
 
-    mutual_love_from_forward = best_backward[best_forward] == x_index
-    x = x_index[mutual_love_from_forward]
-    y = y_index[best_forward[mutual_love_from_forward]]
-
-    assert x.size == y.size, (x.shape, y.shape)
-
-    mask = dist_mat[x, y] < MUTUAL_MATCH_MAX_DISTANCE
-    x, y = x[mask], y[mask]
-
-    return np.stack([x, y]).T
-
-
-dm = compare_images(key_img_a, key_img_b)
-matches = [tuple(x) for x in find_mutual_best_match(dm)]
-print(matches)
-
-fig, axes = plt.subplots(len(key_img_a) + 2, len(key_img_b) + 2, figsize=(40, 40))
-for i in tqdm(range(len(key_img_a))):
-    for j in range(len(key_img_b)):
-        axes[i + 2, j + 2].bar([0], [dm[i, j]])
-        axes[i + 2, j + 2].set_ylim(0, 1)
-        if (i, j) in matches:
-            axes[i + 2, j + 2].scatter([0], [0.5], color='red', s=500)
-
-for i in range(len(key_img_a)):
-    axes[i + 2, 0].imshow(original_a)
-    axes[i + 2, 0].scatter(motion_a_local_max[i, 1], motion_a_local_max[i, 0], color='yellow',
-                           marker='x', s=200)
-    axes[i + 2, 1].imshow(key_img_a[i])
-for i in range(len(key_img_b)):
-    axes[0, i + 2].imshow(original_b)
-    axes[0, i + 2].scatter(motion_b_local_max[i, 1], motion_b_local_max[i, 0], color='yellow',
-                           marker='x', s=200)
-    axes[1, i + 2].imshow(key_img_b[i])
-for ax in axes.flatten():
-    ax.axis('off')
-fig.tight_layout()
-fig.show()
-
-# fig, axes = plt.subplots(3, 1, sharex=True)
-# axes[0].hist(motion_a_mean[:, :50].flatten(), bins=100, label='r', alpha=0.4, color='green')
-# axes[1].hist(motion_a_mean[:, 50:150].flatten(), bins=100, label='c', alpha=0.4, color='red')
-# axes[2].hist(motion_a_mean[:, 150:].flatten(), bins=100, label='l', alpha=0.4, color='blue')
-# axes[0].set_yscale('log')
-# axes[1].set_yscale('log')
-# axes[2].set_yscale('log')
-# fig.show()
+ani.save('anim.mp4')
 
 sys.exit(0)
 
