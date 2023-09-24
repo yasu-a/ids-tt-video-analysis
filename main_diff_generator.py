@@ -1,5 +1,6 @@
 import glob
 import os
+import time
 
 import cv2
 import numpy as np
@@ -8,6 +9,9 @@ from tqdm import tqdm
 import frame_processor as fp
 from async_writer import AsyncVideoFrameWriter
 from extract import VideoFrameReader
+
+
+# FIXME: THIS SCRIPT MAY HAVE A MEMORY LEAK
 
 
 @fp.stage.each
@@ -67,6 +71,8 @@ def main():
     video_path = os.path.expanduser(
         r'~/Desktop/idsttvideos/singles\20230205_04_Narumoto_Harimoto.mp4'
     )
+    video_name = os.path.splitext(os.path.split(video_path)[1])[0]
+    output_timestamp = int(time.time())
     print(video_path)
 
     # 動画のパスからVideoFrameReaderインスタンスを生成
@@ -99,52 +105,19 @@ def main():
     ])
 
     # フレームのパイプラインを生成
-    START, STOP, STEP = 500, 1300, 1
-    it = pipeline(vfr)[START:STOP:STEP]
+    START, STOP, STEP = 500, 1300, 5
+    it = pipeline(vfr)[::STEP]
 
-    # 書き出し先の作成
-    with AsyncVideoFrameWriter(path=os.path.expanduser('~/Desktop/out.mp4'), fps=vfr.fps / STEP) as writer:
-
-        # 各フレームをパイプライン処理
-        t = []
-        tot = []
-        F_STEP = 2
-        for i, product in enumerate(tqdm(it, total=(STOP - START) // STEP)):
-            st = product.position
-            sf = product['source']
-            pf = product['result']
-
-            # パイプラインを通ってきた各フレームに対して処理
-            # print(i, pt, st, pf.shape, sf.shape)
-
-            t.append(st)
-
-            tot.append(pf.mean(axis=2).mean(axis=0))
-
-            h = sf[::F_STEP, ::F_STEP].shape[0]
-            tot_vs = np.clip(np.vstack(tot) * 3, 0, 255)[::1, ::10]
-            graph = np.zeros((h, tot_vs.shape[1], 3), dtype=np.uint8)
-            tot_vs = tot_vs[-h:, :]
-            graph[:tot_vs.shape[0], :tot_vs.shape[1], :] = np.dstack(
-                [tot_vs[:tot_vs.shape[0], :tot_vs.shape[1]]] * 3)
-            graph[:, :, [0, 2]] = 0
-            graph[tot_vs.shape[0] - 1, :, 0] = 255
-
-            out_frame = np.concatenate(
-                [
-                    sf[::F_STEP, ::F_STEP],
-                    pf[::F_STEP, ::F_STEP],
-                    graph
-                ],
-                axis=1
-            )
-            writer.write(out_frame)
-
-            if i % 30 == 0:
-                np.save('out.npy', np.vstack(tot))
-
-        if len(tot) > 0:
-            np.save('out.npy', np.vstack(tot))
+    # 各フレームをパイプライン処理
+    tot = []
+    tss = []
+    DST_PATH = f'out/{video_name}_{output_timestamp}.npz'
+    for i, product in enumerate(it):
+        tot.append(product['result'].mean(axis=2).mean(axis=0))
+        tss.append(product.position)
+        if (i + 1) % 30 == 0:
+            np.savez(DST_PATH, np.vstack(tot), np.array(tss))
+    np.savez(DST_PATH, np.vstack(tot), np.array(tss))
 
 
 if __name__ == '__main__':
