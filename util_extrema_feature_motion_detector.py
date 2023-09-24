@@ -232,6 +232,7 @@ def main():
     for ax in axes.flatten():
         ax.axis('off')
     fig.tight_layout()
+    fig.savefig('local_max_feature_dist_mat.jpg')
     fig.show()
 
 
