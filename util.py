@@ -38,6 +38,9 @@ def load():
     return motions, originals, tss
 
 
+motions, originals, tss = load()
+
+
 def slice_frame(fr, rect):
     return fr[rect]
 

@@ -4,12 +4,12 @@ import scipy.ndimage
 
 import util
 
+from util import motions, originals, tss
+
 np.set_printoptions(suppress=True)
 
 from tqdm import tqdm
 import skimage.feature
-
-motions, originals, tss = util.load()
 
 RECT = slice(50, 250), slice(100, 300)  # height, width
 
