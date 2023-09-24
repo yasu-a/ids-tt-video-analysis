@@ -16,7 +16,8 @@ class ExtremaFeatureMotionDetector:
             motion_local_max_distance_factor=32,
             motion_local_max_thresh=0.03,
             mutual_match_max_cos_distance=0.3,  # cos_distance = 1 - np.clip(cos_dist, 0, 1)
-            key_image_size=32
+            key_image_size=32,
+            max_movement=20
     ):
         self.__p_detection_region_rect = detection_region_rect
         self.__c_rect = *self.__p_detection_region_rect, slice(None, None)
@@ -25,6 +26,7 @@ class ExtremaFeatureMotionDetector:
         self.__p_motion_local_max_thresh = motion_local_max_thresh
         self.__p_mutual_match_max_cos_distance = mutual_match_max_cos_distance
         self.__p_key_image_size = key_image_size // 2
+        self.__p_max_movement = max_movement
 
     def _process_input(self, img):
         return img[self.__c_rect].astype(np.float32) / 256.0
@@ -42,6 +44,11 @@ class ExtremaFeatureMotionDetector:
         #     size=np.array(motion_image.shape) // self.__p_mean_conv_win_size_factor,
         #     mode='constant'
         # )
+        motion_image = np.where(
+            motion_image < np.percentile(motion_image, 95),
+            0,
+            motion_image
+        )
         return scipy.ndimage.convolve(
             motion_image,
             weights=self._mean_conv_filter(motion_image.shape),
@@ -126,8 +133,16 @@ class ExtremaFeatureMotionDetector:
             size=self.__p_key_image_size
         )
 
+        if not (key_img_a and key_img_b):
+            return None  # no motion detected
+
         dist_mat = self._compare_key_batches(key_img_a, key_img_b)
         matches = self._find_mutual_best_match(dist_mat)
+        movements = np.linalg.norm(
+            motion_b_local_max[matches[:, 1]] - motion_a_local_max[matches[:, 0]],
+            axis=1
+        )
+        matches = matches[movements <= self.__p_max_movement]
 
         cx, cy = self.__c_rect[0].start, self.__c_rect[1].start
 
@@ -153,12 +168,7 @@ def main():
     rect = slice(50, 250), slice(100, 300)
 
     detector = ExtremaFeatureMotionDetector(
-        detection_region_rect=rect,
-        mean_conv_win_size_factor=32,
-        motion_local_max_distance_factor=32,
-        motion_local_max_thresh=0.03,
-        mutual_match_max_cos_distance=0.3,
-        key_image_size=32
+        detection_region_rect=rect
     )
 
     result = detector.compute(original_images, motion_images)
