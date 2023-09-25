@@ -60,7 +60,7 @@ def split_quarter(index_array, src_shape):
     )
 
 
-S, E = 200 , 1000
+S, E = 200, 1000
 print(tss[S], tss[E])
 
 stack = dict(
@@ -145,8 +145,16 @@ def animate(j):
             s[0],
             d[1] - s[1],
             d[0] - s[0],
-            color='red',
+            color='white',
             width=1
+        )
+        ax.arrow(
+            s[1],
+            s[0],
+            d[1] - s[1],
+            d[0] - s[0],
+            color='red',
+            width=0.5
         )
     ax.imshow(video_dump['image'][j])
 
