@@ -65,4 +65,4 @@ def extract_frames_around(a, x, y, size):
     # for ax, w in zip(axes, wins):
     #     ax.imshow(w)
     # fig.show()
-    return wins
+    return np.stack(wins)
