@@ -242,7 +242,7 @@ class ExtremaFeatureMotionDetector:
             def __generate_motion_center(self):
                 self['local_motion_center_a'] = self['local_center_a']
                 self['global_motion_center_a'] = self['global_center_a']
-                if enable_motion_correction:
+                if enable_motion_correction and self.n_matches > 0:
                     cors = []
                     for i in range(self.n_matches):
                         cor = self._correct_motion_center(
