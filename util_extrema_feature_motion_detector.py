@@ -111,7 +111,7 @@ class ExtremaFeatureMotionDetector:
             POINT_SPECIFIC_FEATURE_NAMES = 'local_center', 'global_center', 'frame'
 
             def contains_no_key_points(self):
-                return not self['frame_a'].size or not self['frame_b'].size
+                return self['frame_a'] is None or self['frame_b'] is None
 
         def process():
             # motion_x: npa[height, width, channels]
