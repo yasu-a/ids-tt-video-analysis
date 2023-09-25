@@ -133,8 +133,20 @@ class ExtremaFeatureMotionDetector:
             size=self.__p_key_image_size
         )
 
+        result = dict(
+            valid=False,
+            original_a=original_a,
+            original_b=original_b,
+            motion_a=motion_a,
+            motion_b=motion_b,
+            key_img_a=key_img_a,
+            key_img_b=key_img_b,
+            motion_a_local_max=motion_a_local_max,
+            motion_b_local_max=motion_b_local_max
+        )
+
         if not (key_img_a and key_img_b):
-            return None  # no motion detected
+            return result  # no motion detected
 
         dist_mat = self._compare_key_batches(key_img_a, key_img_b)
         matches = self._find_mutual_best_match(dist_mat)
@@ -142,19 +154,28 @@ class ExtremaFeatureMotionDetector:
             motion_b_local_max[matches[:, 1]] - motion_a_local_max[matches[:, 0]],
             axis=1
         )
-        matches = matches[movements <= self.__p_max_movement]
+        mask = movements <= self.__p_max_movement
+        matches = matches[mask]
 
         cx, cy = self.__c_rect[0].start, self.__c_rect[1].start
 
-        return dict(
+        src_point = motion_a_local_max[matches[:, 0]]
+        dst_point = motion_b_local_max[matches[:, 1]]
+        movements = movements[mask]
+        angles = np.arctan2(
+            (dst_point - src_point)[:, 0], (dst_point - src_point)[:, 1]
+        ) * 180 / np.pi
+
+        return result | dict(
+            valid=True,
             matches=matches,
-            key_img_a=key_img_a,
-            key_img_b=key_img_b,
             dist_mat=dist_mat,
-            motion_a_local_max=motion_a_local_max,
-            motion_b_local_max=motion_b_local_max,
-            src=motion_a_local_max[matches[:, 0]] + [cx, cy],
-            dst=motion_b_local_max[matches[:, 1]] + [cx, cy]
+            src_rect=src_point,
+            dst_rect=dst_point,
+            src=src_point + [cx, cy],
+            dst=dst_point + [cx, cy],
+            movements=movements,
+            angle=angles
         )
 
 
