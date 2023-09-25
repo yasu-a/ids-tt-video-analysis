@@ -9,9 +9,10 @@
 
 # Motion Centroid Correction
 
-Disabled <-> Enabled
-
+Disabled
 ![img](presen_materials/motion_centroid_correction/out_without_motion_correction.gif)
+
+Enabled
 ![img](presen_materials/motion_centroid_correction/out_with_motion_correction.gif)
 
 Disabled
