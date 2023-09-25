@@ -206,7 +206,10 @@ class ExtremaFeatureMotionDetector:
                             scipy.ndimage.convolve(fr.mean(axis=2), cls._FILTER.T, mode='nearest')
                         )
                     )
-                    grad = skimage.filters.rank.mean(grad, np.ones((3, 3)))
+                    grad = skimage.filters.rank.mean(
+                        skimage.util.img_as_ubyte(grad),
+                        np.ones((3, 3))
+                    )
                     mask = grad > np.percentile(grad, 50)
                     grad[~mask] = 0
 
@@ -245,8 +248,6 @@ class ExtremaFeatureMotionDetector:
                 self['global_motion_center_a'] = self['global_center_a']
                 self['local_motion_center_b'] = self['local_center_b'] + cors
                 self['global_motion_center_b'] = self['global_center_b'] + cors
-                print(self['global_center_b'])
-                print(cors)
 
             def __generate_additional_data(self):
                 self['velocity'] = self['local_motion_center_b'] - self['local_motion_center_a']
