@@ -186,11 +186,77 @@ class ExtremaFeatureMotionDetector:
                 self['motion_a'] = self.keys['motion_a']
                 self['motion_b'] = self.keys['motion_b']
 
+            _FILTER = np.array([
+                [0, 0.5, 0],
+                [0, 0, 0],
+                [0, -0.5, 0]
+            ])
+
+            @classmethod
+            def _correct_motion_center(cls, src_original, dst_original):
+                images = [src_original, dst_original]
+
+                for i in range(2):
+                    fr = images[i]
+
+                    grad = np.sqrt(
+                        np.square(
+                            scipy.ndimage.convolve(fr.mean(axis=2), cls._FILTER, mode='nearest')
+                        ) + np.square(
+                            scipy.ndimage.convolve(fr.mean(axis=2), cls._FILTER.T, mode='nearest')
+                        )
+                    )
+                    grad = skimage.filters.rank.mean(grad, np.ones((3, 3)))
+                    mask = grad > np.percentile(grad, 50)
+                    grad[~mask] = 0
+
+                    fr = np.where(np.tile(mask[..., None], 3), fr, 0)
+
+                    images[i] = fr
+
+                tp = skimage.feature.match_template(
+                    images[1],
+                    images[0],
+                    pad_input=True,
+                    mode='constant'
+                )
+
+                center = np.array(dst_original.shape)[:-1] // 2
+
+                x, y = np.meshgrid(np.arange(tp.shape[0]), np.arange(tp.shape[1]))
+                x, y = x - center[0], y - center[1]
+                r = int(tp.shape[0] * 0.5) // 2
+                tp[x * x + y * y > r * r] = 0
+
+                match = np.concatenate(np.where(tp == tp.max()))[:-1]
+                correction = match - center  # dst_original centroid - src_original centroid
+                return correction
+
+            def __generate_motion_center(self):
+                cors = []
+                for i in range(self.n_matches):
+                    cor = self._correct_motion_center(
+                        self['frame_a'][i], self['frame_b'][i]
+                    )
+                    cors.append(cor)
+                cors = np.stack(cors)
+
+                self['local_motion_center_a'] = self['local_center_a']
+                self['global_motion_center_a'] = self['global_center_a']
+                self['local_motion_center_b'] = self['local_center_b'] + cors
+                self['global_motion_center_b'] = self['global_center_b'] + cors
+                print(self['global_center_b'])
+                print(cors)
+
             def __generate_additional_data(self):
-                self['velocity'] = self['local_center_b'] - self['local_center_a']
+                self['velocity'] = self['local_motion_center_b'] - self['local_motion_center_a']
                 self['velocity_x'] = self['velocity'][:, 0]
                 self['velocity_y'] = self['velocity'][:, 1]
                 self['velocity_norm'] = np.linalg.norm(self['velocity'], axis=1)
+
+            @property
+            def n_matches(self):
+                return len(self['local_center_a'])
 
             def __init__(self, *, keys, match_index_pair, dist_mat):
                 super().__init__()
@@ -198,6 +264,7 @@ class ExtremaFeatureMotionDetector:
                 self.match_index_pair = match_index_pair
                 self.dist_mat = dist_mat
                 self.__generate_pairs()
+                self.__generate_motion_center()
                 self.__generate_additional_data()
 
             def apply_filter(self, mask):
@@ -236,11 +303,6 @@ class ExtremaFeatureMotionDetector:
 
         mask = matches['velocity_norm'] < self.__p_max_velocity
         matches.apply_filter(mask)
-
-        matches['local_motion_center_a'] = matches['local_center_a']
-        matches['local_motion_center_b'] = matches['local_center_b']
-        matches['global_motion_center_a'] = matches['global_center_a']
-        matches['global_motion_center_b'] = matches['global_center_b']
 
         class ComputationResult(dict):
             velocity: np.ndarray = ...
@@ -287,11 +349,17 @@ class ExtremaFeatureMotionDetector:
 def main():
     from util import motions, originals
 
-    i = 191
+    i = 193
     motion_images = motions[i], motions[i + 1]
     original_images = originals[i], originals[i + 1]
 
-    rect = slice(50, 250), slice(100, 300)
+    rect = slice(70, 260), slice(180, 255)  # height, width
+    # height: 奥の選手の頭から手前の選手の足がすっぽり入るように
+    # width: ネットの部分の卓球台の幅に合うように
+
+    w = rect[1].stop - rect[1].start
+    aw = int(w * 1.0)
+    rect = slice(rect[0].start, rect[0].stop), slice(rect[1].start - aw, rect[1].stop + aw)
 
     detector = ExtremaFeatureMotionDetector(
         detection_region_rect=rect
