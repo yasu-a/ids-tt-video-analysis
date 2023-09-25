@@ -1,269 +1,175 @@
 import sys
 
-import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 import scipy.ndimage
 
 import util
-import json
-import os
-
 from util import motions, originals, tss
-import numpy as np
 
 np.set_printoptions(suppress=True)
 
 from tqdm import tqdm
-import skimage.feature
 
 from util_extrema_feature_motion_detector import ExtremaFeatureMotionDetector
 
-RECT_TEST = False
+import train_input
 
-rect = slice(70, 245), slice(180, 255)  # height, width
+VIDEO_NAME = '20230205_04_Narumoto_Harimoto'
+train_input_df = train_input.load(f'./train/iDSTTVideoAnalysis_{VIDEO_NAME}.csv')
+
+print(train_input_df)
+
+
+def create_rally_mask():
+    s, e = train_input_df.start.to_numpy(), train_input_df.end.to_numpy()
+    r = np.logical_and(s <= tss[:, None], tss[:, None] <= e).sum(axis=1)
+    r = r > 0
+    return r.astype(np.uint8)
+
+
+rally_mask = create_rally_mask()
+
+print(rally_mask)
+
+rect = slice(70, 260), slice(180, 255)  # height, width
 # height: 奥の選手の頭から手前の選手の足がすっぽり入るように
 # width: ネットの部分の卓球台の幅に合うように
-
-if RECT_TEST:
-    plt.figure()
-    plt.imshow(originals[110])
-    plt.hlines(rect[0].start, rect[1].start, rect[1].stop, colors='white')
-    plt.hlines(rect[0].stop, rect[1].start, rect[1].stop, colors='white')
-    plt.vlines(rect[1].start, rect[0].start, rect[0].stop, colors='white')
-    plt.vlines(rect[1].stop, rect[0].start, rect[0].stop, colors='white')
-    plt.show()
 
 w = rect[1].stop - rect[1].start
 aw = int(w * 1.0)
 rect = slice(rect[0].start, rect[0].stop), slice(rect[1].start - aw, rect[1].stop + aw)
 
-if RECT_TEST:
-    plt.figure()
-    plt.imshow(originals[110])
-    plt.hlines(rect[0].start, rect[1].start, rect[1].stop, colors='white')
-    plt.hlines(rect[0].stop, rect[1].start, rect[1].stop, colors='white')
-    plt.vlines(rect[1].start, rect[0].start, rect[0].stop, colors='white')
-    plt.vlines(rect[1].stop, rect[0].start, rect[0].stop, colors='white')
-    plt.show()
-
-    sys.exit(0)
-
 detector = ExtremaFeatureMotionDetector(
     rect
 )
 
-frames = []
-sources = []
-destinations = []
-for i in tqdm(range(8000)):
+
+def split_quarter(index_array, src_shape):
+    n = src_shape[0] // 3
+    m = n * 2
+
+    y = index_array[:, 0]
+
+    idx_vec = np.arange(len(index_array))
+
+    return (
+        idx_vec[y < n],
+        idx_vec[(n <= y) & (y < m)],
+        idx_vec[m < y]
+    )
+
+
+S, E = 200, 1000
+print(tss[S], tss[E])
+
+stack = dict(
+    mv_std=[[], [], []],
+    mv_mean=[[], [], []],
+)
+video_dump = dict(
+    image=[],
+    src=[],
+    dst=[]
+)
+
+for i in tqdm(range(S, E)):
     motion_images = motions[i], motions[i + 1]
     original_images = originals[i], originals[i + 1]
     result = detector.compute(original_images, motion_images)
-    if result is None:
-        src, dst = [], []
-    else:
-        src, dst = result['src'], result['dst']
-    frames.append(motions[i])
-    sources.append(src)
-    destinations.append(dst)
+    video_dump['image'].append(originals[i])
 
+    if not result['valid']:
+        src, dst = [], []
+        for i in range(3):
+            stack['mv_std'][i].append(0)
+            stack['mv_mean'][i].append(0)
+    else:
+        src, dst = result.a.global_motion_center, result.b.global_motion_center
+        for i, idx in enumerate(split_quarter(src, result['motion_a'].shape)):
+            if idx.size == 0:
+                stack['mv_std'][i].append(0)
+                stack['mv_mean'][i].append(0)
+            else:
+                stack['mv_std'][i].append(np.std(result.velocity_y))
+                stack['mv_mean'][i].append(np.mean(result.velocity_y))
+
+    video_dump['src'].append(src)
+    video_dump['dst'].append(dst)
+
+# chart
+for k in stack.keys():
+    stack[k] = np.array(stack[k])
+
+import seaborn as sns
+
+fig, axes = plt.subplots(4, 1, sharex=True, figsize=(60, 10))
+sns.heatmap(rally_mask[None, S:E], ax=axes[0], cbar=False)
+sns.heatmap(rally_mask[None, S:E], ax=axes[-1], cbar=False)
+
+for i, name in enumerate(['mv_std', 'mv_mean']):
+    i = i + 1
+    axes[i].set_title(name)
+    for j in range(3):
+        lst = stack[name][j]
+        axes[i].plot(lst, label=f'{j}')
+    axes[i].legend()
+
+
+def ax_edit_ticklabel(ax):
+    ax.set_xticklabels(tss[S:E][ax.get_xticks().astype(int)].round(1), rotation=90)
+
+
+ax_edit_ticklabel(axes[-1])
+
+plt.tight_layout()
+
+plt.show()
+plt.close()
+
+# video
 fig = plt.figure()
 
 import matplotlib.animation as animation
+
+bar = tqdm(total=len(video_dump['image']))
 
 
 def animate(j):
     ax = fig.gca()
     ax.cla()
 
-    for s, d in zip(sources[j], destinations[j]):
+    for s, d in zip(video_dump['src'][j], video_dump['dst'][j]):
+        ax.arrow(
+            s[1],
+            s[0],
+            d[1] - s[1],
+            d[0] - s[0],
+            color='white',
+            width=1
+        )
         ax.arrow(
             s[1],
             s[0],
             d[1] - s[1],
             d[0] - s[0],
             color='red',
-            width=1
+            width=0.5
         )
-    ax.imshow(frames[j])
+    ax.imshow(video_dump['image'][j])
+
+    bar.update()
 
 
-ani = animation.FuncAnimation(fig, animate, interval=100, frames=len(frames), blit=False,
-                              save_count=50)
+ani = animation.FuncAnimation(
+    fig,
+    animate,
+    interval=100,
+    frames=len(video_dump['image']),
+    blit=False,
+    save_count=50
+)
 
-ani.save('anim.mp4')
+ani.save('out.mp4')
 
 sys.exit(0)
-
-
-def split1d(a_src, n):
-    a = a_src.copy()
-    if a.size % n != 0:
-        pad = np.zeros(n - a.size % n)
-        pad[:] = a_src[-1]
-        a = np.concatenate([a, pad])
-    assert a.size % n == 0, (n, a.shape)
-    return np.array(np.split(a, n))
-
-
-SPLIT_COUNT = 32
-
-import scipy.signal
-
-
-def _extract_motion_single_diff(a, b, axis):
-    a_am = a.argmax(axis=axis)
-    b_am = b.argmax(axis=axis)
-    velocity = (b_am - a_am) / a.shape[axis]
-    strength = np.sqrt(a.max(axis=axis) * b.max(axis=axis))
-    amount = velocity * strength
-    amount = scipy.signal.medfilt(amount, kernel_size=5)
-    return velocity, strength, amount
-
-
-def extract_motion(a, b, c, axis):
-    v, s, a = _extract_motion_single_diff(a, b, axis)
-    vv, ss, aa = _extract_motion_single_diff(b, c, axis)
-    relevance = np.sqrt(np.sqrt(np.square(v - vv) * np.square(s - ss)))
-    return (v + vv) / 2, (s + ss) / 2, (a + aa) / 2 * relevance
-
-
-def create_motion_feature(a, b, c):
-    # plt.figure()
-    a = process_frame(a)
-    # plt.imshow(a)
-    b = process_frame(b)
-    c = process_frame(c)
-    v_0, s_0, a_0 = extract_motion(a, b, c, axis=0)  # .size == width  -> horizontal motion
-    v_1, s_1, a_1 = extract_motion(a, b, c, axis=1)  # .size == height -> vertical motion
-    return dict(
-        frame_first=a,
-        frame_second=b,
-        horizontal_velocity=v_0,
-        horizontal_strength=s_0,
-        horizontal_amount=a_0,
-        vertical_velocity=v_1,
-        vertical_strength=s_1,
-        vertical_amount=a_1,
-        width=v_0.size,
-        height=v_1.size
-    )
-
-
-def draw_motion_feature_plot(mf, ax):
-    im = np.concatenate([
-        mf['frame_first'],
-        mf['frame_second']
-    ], axis=1)
-    im = np.concatenate([
-        im,
-        np.concatenate([
-            mf['frame_second'],
-            np.zeros_like(mf['frame_second'])
-        ], axis=1)
-    ], axis=0)
-    ax.imshow(im)
-    for i, v, s, amount in zip(np.arange(mf['height']), mf['vertical_velocity'],
-                               mf['vertical_strength'], mf['vertical_amount']):
-        plt.arrow(-25, mf['height'] + i, amount * mf['width'] * 20, 0, width=1, color=(0, 1, 0),
-                  alpha=0.3)
-    for i, v, s, amount in zip(np.arange(mf['width']), mf['horizontal_velocity'],
-                               mf['horizontal_strength'], mf['horizontal_amount']):
-        plt.arrow(mf['width'] + i, -25, 0, amount * mf['height'] * 20, width=1, color=(0, 1, 0),
-                  alpha=0.3)
-    ax.set_xlim(mf['width'] * 2, -100)
-    ax.set_ylim(mf['height'] * 2, -100)
-
-
-def extract_motion(a, b, max_velocity):
-    N = 16
-
-    feature_points_a = util.local_max_2d(a)
-    feature_parts_a = util.extract_frames_around(
-        a, feature_points_a[:, 1], feature_points_a[:, 0], N
-    )
-
-    feature_points_b = util.local_max_2d(b)
-    feature_parts_b = util.extract_frames_around(
-        b, feature_points_b[:, 1], feature_points_b[:, 0], N
-    )
-
-    if feature_points_a.size > 0 and feature_points_b.size > 0:
-        dist = []
-        for fa in feature_parts_a:
-            dist.append([])
-            for fb in feature_parts_b:
-                dist[-1].append(np.sum(np.square(fa - fb)))
-
-        dist = np.array(dist)
-        dist = np.sqrt(dist)
-
-        forward = dist.argmin(axis=1)
-        backward = dist.argmin(axis=0)
-
-        motion_feature_target_a = np.arange(len(forward))[
-            backward[forward] == np.arange(len(forward))]
-        motion_feature_target_b = forward[motion_feature_target_a]
-
-        motion_velocity = feature_points_b[motion_feature_target_b] - feature_points_a[
-            motion_feature_target_a]
-
-        mask = np.sqrt(np.sum(np.square(motion_velocity), axis=1)) <= max_velocity
-
-        a_points = feature_points_a[motion_feature_target_a][mask]
-        b_points = feature_points_b[motion_feature_target_b][mask]
-        velocity = motion_velocity[mask]
-    else:
-        a_points = np.array([])
-        b_points = np.array([])
-        velocity = np.array([])
-
-    return dict(
-        a_points=a_points,
-        b_points=b_points,
-        velocity=velocity
-    )
-
-
-a = motions[191]
-a = process_frame(a)
-b = motions[192]
-b = process_frame(b)
-
-import io
-from PIL import Image
-
-
-def fig2img(fig):
-    """Convert a Matplotlib figure to a PIL Image and return it"""
-
-    buf = io.BytesIO()
-    fig.savefig(buf)
-    buf.seek(0)
-    img = Image.open(buf)
-    return img
-
-
-from tqdm import tqdm
-
-ims = []
-for i in tqdm(range(150, 700)):
-    a, b = process_frame(motions[i]), process_frame(motions[i + 1])
-    fig = plt.figure(figsize=(5, 7))
-    motion = extract_motion(a, b, max_velocity=32)
-    fig.gca().imshow(b)
-    for src, v in zip(motion['a_points'], motion['velocity']):
-        fig.gca().arrow(
-            src[1],
-            src[0],
-            v[1],
-            v[0],
-            color='red',
-            width=1
-        )
-    img = fig2img(fig)
-    ims.append(img)
-    plt.close()
-
-ims[0].save("out.gif", format="GIF", append_images=ims,
-            save_all=True, duration=166, loop=0)
