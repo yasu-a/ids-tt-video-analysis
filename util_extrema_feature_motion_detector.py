@@ -17,7 +17,8 @@ class ExtremaFeatureMotionDetector:
             motion_local_max_thresh=0.03,
             mutual_match_max_cos_distance=0.3,  # cos_distance = 1 - np.clip(cos_dist, 0, 1)
             key_image_size=32,
-            max_velocity=20
+            max_velocity=20,
+            enable_motion_correction=True
     ):
         self.__p_detection_region_rect = detection_region_rect
         self.__c_rect = *self.__p_detection_region_rect, slice(None, None)
@@ -27,6 +28,7 @@ class ExtremaFeatureMotionDetector:
         self.__p_mutual_match_max_cos_distance = mutual_match_max_cos_distance
         self.__p_key_image_size = key_image_size // 2
         self.__p_max_velocity = max_velocity
+        self.__p_enable_motion_correction = enable_motion_correction
 
     def _process_input(self, img):
         return img[self.__c_rect].astype(np.float32) / 256.0
@@ -170,6 +172,8 @@ class ExtremaFeatureMotionDetector:
         return process()
 
     def _extract_matches(self, keys_):
+        enable_motion_correction = self.__p_enable_motion_correction
+
         class Matches(dict):
             def __generate_pairs(self):
                 for i, t in enumerate('ab'):
@@ -236,18 +240,22 @@ class ExtremaFeatureMotionDetector:
                 return correction
 
             def __generate_motion_center(self):
-                cors = []
-                for i in range(self.n_matches):
-                    cor = self._correct_motion_center(
-                        self['frame_a'][i], self['frame_b'][i]
-                    )
-                    cors.append(cor)
-                cors = np.stack(cors)
-
                 self['local_motion_center_a'] = self['local_center_a']
                 self['global_motion_center_a'] = self['global_center_a']
-                self['local_motion_center_b'] = self['local_center_b'] + cors
-                self['global_motion_center_b'] = self['global_center_b'] + cors
+                if enable_motion_correction:
+                    cors = []
+                    for i in range(self.n_matches):
+                        cor = self._correct_motion_center(
+                            self['frame_a'][i], self['frame_b'][i]
+                        )
+                        cors.append(cor)
+                    cors = np.stack(cors)
+
+                    self['local_motion_center_b'] = self['local_center_b'] + cors
+                    self['global_motion_center_b'] = self['global_center_b'] + cors
+                else:
+                    self['local_motion_center_b'] = self['local_center_b']
+                    self['global_motion_center_b'] = self['global_center_b']
 
             def __generate_additional_data(self):
                 self['velocity'] = self['local_motion_center_b'] - self['local_motion_center_a']
