@@ -4,6 +4,18 @@
 
 [./util_extrema_feature_motion_detector.py](./util_extrema_feature_motion_detector.py)
 
-![Test Image 2](presen_materials/local_max_feature_motion_vectors.gif)
+![img](presen_materials/local_max_feature_motion_vectors.gif)
+![img](presen_materials/local_max_feature_dist_mat.png)
 
-![Test Image 1](presen_materials/local_max_feature_dist_mat.png)
+# Motion Centroid Correction
+
+Disabled <-> Enabled
+
+![img](presen_materials/motion_centroid_correction/out_without_motion_correction.gif)
+![img](presen_materials/motion_centroid_correction/out_with_motion_correction.gif)
+
+Disabled
+![img](presen_materials/motion_centroid_correction/out_without_motion_correction.png)
+
+Enabled
+![img](presen_materials/motion_centroid_correction/out_with_motion_correction.png)
