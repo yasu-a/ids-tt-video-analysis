@@ -60,14 +60,12 @@ def split_quarter(index_array, src_shape):
     )
 
 
-S, E = 200, 1000
+S, E = 200 , 1000
 print(tss[S], tss[E])
 
 stack = dict(
     mv_std=[[], [], []],
     mv_mean=[[], [], []],
-    angle_std=[[], [], []],
-    angle_mean=[[], [], []]
 )
 video_dump = dict(
     image=[],
@@ -79,30 +77,22 @@ for i in tqdm(range(S, E)):
     motion_images = motions[i], motions[i + 1]
     original_images = originals[i], originals[i + 1]
     result = detector.compute(original_images, motion_images)
-    video_dump['image'].append(result['original_a'])
+    video_dump['image'].append(originals[i])
 
     if not result['valid']:
         src, dst = [], []
         for i in range(3):
             stack['mv_std'][i].append(0)
             stack['mv_mean'][i].append(0)
-            stack['angle_std'][i].append(0)
-            stack['angle_mean'][i].append(0)
     else:
-        src, dst, movements, angle \
-            = result['src_rect'], result['dst_rect'], result['movements'], result['angle']
+        src, dst = result.a.global_motion_center, result.b.global_motion_center
         for i, idx in enumerate(split_quarter(src, result['motion_a'].shape)):
             if idx.size == 0:
                 stack['mv_std'][i].append(0)
                 stack['mv_mean'][i].append(0)
-                stack['angle_std'][i].append(0)
-                stack['angle_mean'][i].append(0)
             else:
-                mv = dst[idx, 0] - src[idx, 0]
-                stack['mv_std'][i].append(np.std(mv))
-                stack['mv_mean'][i].append(np.mean(mv))
-                stack['angle_std'][i].append(np.std(angle[idx]))
-                stack['angle_mean'][i].append(np.mean(angle[idx]))
+                stack['mv_std'][i].append(np.std(result.velocity_y))
+                stack['mv_mean'][i].append(np.mean(result.velocity_y))
 
     video_dump['src'].append(src)
     video_dump['dst'].append(dst)
@@ -113,11 +103,11 @@ for k in stack.keys():
 
 import seaborn as sns
 
-fig, axes = plt.subplots(6, 1, sharex=True, figsize=(60, 10))
+fig, axes = plt.subplots(4, 1, sharex=True, figsize=(60, 10))
 sns.heatmap(rally_mask[None, S:E], ax=axes[0], cbar=False)
 sns.heatmap(rally_mask[None, S:E], ax=axes[-1], cbar=False)
 
-for i, name in enumerate(['mv_std', 'mv_mean', 'angle_std', 'angle_mean']):
+for i, name in enumerate(['mv_std', 'mv_mean']):
     i = i + 1
     axes[i].set_title(name)
     for j in range(3):
