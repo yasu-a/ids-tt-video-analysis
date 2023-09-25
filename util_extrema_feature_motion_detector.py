@@ -163,8 +163,8 @@ class ExtremaFeatureMotionDetector:
                 global_center_b=motion_b_local_max + rect_offset,  # key point
                 frame_a=key_img_a,  # key frame
                 frame_b=key_img_b,  # key frame
-                count_a=len(key_img_a),
-                count_b=len(key_img_b)
+                count_a=0 if key_img_a is None else len(key_img_a),
+                count_b=0 if key_img_b is None else len(key_img_b)
             )
 
         return process()
@@ -228,6 +228,9 @@ class ExtremaFeatureMotionDetector:
     def compute(self, original_images, motion_images):
         keys_ = self._extract_key_points(original_images, motion_images)
         matches = self._extract_matches(keys_)
+
+        if 'valid' in matches:
+            return matches
 
         # FIXME: calculate velocity with motion center
 
