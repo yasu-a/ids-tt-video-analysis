@@ -121,15 +121,19 @@ class MemoryMapStorage:
             a[i, ...] = data_dct[name]
         self.mark_finished(i)
 
-    def get(self, i):
+    def get(self, i):  # FIXME: __status__ filtering
         assert self.__mode == 'r', self.__mode
         self.__ensure_initialized()
         data_dct = {}
         for name in self._config.keys():
             a = self.__get_array(name)
             data_dct[name] = a[i, ...]
-
         return data_dct
+
+    def get_all_of(self, name):
+        assert self.__mode == 'r', self.__mode
+        self.__ensure_initialized()
+        return np.array(self.__get_array(name))
 
     def close(self):
         for v in self.__data.values():
