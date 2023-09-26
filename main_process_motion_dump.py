@@ -2,8 +2,6 @@ import sys
 
 import numpy as np
 
-import config
-
 np.set_printoptions(suppress=True)
 
 from tqdm import tqdm
@@ -11,7 +9,6 @@ from tqdm import tqdm
 from util_extrema_feature_motion_detector import ExtremaFeatureMotionDetector
 
 import dataset
-import os
 
 
 def process_rect(rect):
