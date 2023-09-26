@@ -37,7 +37,8 @@ class MemoryMapStorage:
             'shape': {}
         }
 
-        self.__load_json()
+        if mode == 'r':
+            self.__load_json()
 
         self.__initialized = False
 
@@ -106,7 +107,7 @@ class MemoryMapStorage:
             assert 'max_entries not given', self.__max_entries
 
     def finished_entry_count(self):
-        return np.sum(self.__get_array('__status__') == self.STATUS_FINISHED)
+        return int(np.sum(self.__get_array('__status__') == self.STATUS_FINISHED))
 
     def count(self):
         return self.finished_entry_count()
@@ -157,6 +158,18 @@ class VideoFrameStorage(MemoryMapStorage):
         }
 
 
+class MotionStorage(MemoryMapStorage):
+    def generate_config(self):
+        return super().generate_config() | {
+            'start': {
+                'dtype': np.float32
+            },
+            'end': {
+                'dtype': np.float32
+            }
+        }
+
+
 class FrameDumpIO:
     def __init__(self, video_name=None):
         self.__video_name = video_name or config.DEFAULT_VIDEO_NAME
@@ -177,3 +190,27 @@ class FrameDumpIO:
             config.VIDEO_DIR_PATH,
             f'{self.__video_name}.mp4'
         )
+
+
+def get_video_path(video_name):
+    video_name = video_name or config.DEFAULT_VIDEO_NAME
+    return os.path.join(
+        config.VIDEO_DIR_PATH,
+        video_name + '.mp4'
+    )
+
+
+def get_video_frame_dump_dir_path(video_name):
+    video_name = video_name or config.DEFAULT_VIDEO_NAME
+    return os.path.join(
+        config.FRAME_DUMP_DIR_PATH,
+        video_name,
+    )
+
+
+def get_motion_dump_dir_path(video_name):
+    video_name = video_name or config.DEFAULT_VIDEO_NAME
+    return os.path.join(
+        config.MOTION_DUMP_DIR_PATH,
+        video_name
+    )
