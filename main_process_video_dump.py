@@ -157,6 +157,7 @@ def process(video_name, signal: list = None):
     frame_dump_io = dataset.FrameDumpIO(video_name=video_name)
     it = iter_results(frame_dump_io.video_path)
     meta = next(it)
+    # FIXME: max_entries=meta['frame_count'] is too large
     with frame_dump_io.get_storage(mode='w', max_entries=meta['frame_count']) as storage:
         for i, data_dct in it:
             storage.put(i, data_dct)
