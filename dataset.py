@@ -120,7 +120,7 @@ class MemoryMapStorage:
             a[i, ...] = data_dct[name]
         self.mark_finished(i)
 
-    def get(self, i, filter_finished=True):
+    def get(self, i):
         assert self.__mode == 'r', self.__mode
         self.__ensure_initialized()
         data_dct = {}
