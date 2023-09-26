@@ -192,7 +192,7 @@ class FrameDumpIO:
         )
 
 
-def get_video_path(video_name):
+def get_video_path(video_name=None):
     video_name = video_name or config.DEFAULT_VIDEO_NAME
     return os.path.join(
         config.VIDEO_DIR_PATH,
@@ -200,7 +200,7 @@ def get_video_path(video_name):
     )
 
 
-def get_video_frame_dump_dir_path(video_name):
+def get_video_frame_dump_dir_path(video_name=None):
     video_name = video_name or config.DEFAULT_VIDEO_NAME
     return os.path.join(
         config.FRAME_DUMP_DIR_PATH,
@@ -208,7 +208,7 @@ def get_video_frame_dump_dir_path(video_name):
     )
 
 
-def get_motion_dump_dir_path(video_name):
+def get_motion_dump_dir_path(video_name=None):
     video_name = video_name or config.DEFAULT_VIDEO_NAME
     return os.path.join(
         config.MOTION_DUMP_DIR_PATH,
