@@ -114,6 +114,8 @@ class MemoryMapStorage:
 
     def put(self, i, data_dct):
         assert self.__mode == 'w', self.__mode
+        assert set(data_dct.keys()) == set(self._config.keys() - {'__status__'}), \
+            (data_dct.keys(), self._config.keys() - {'__status__'})
         self.__ensure_initialized()
         for name in data_dct.keys():
             shape = getattr(data_dct[name], 'shape', None) or tuple()
