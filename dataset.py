@@ -172,6 +172,12 @@ class MotionStorage(MemoryMapStorage):
             },
             'end': {
                 'dtype': np.float32
+            },
+            'frame_index': {
+                'dtype': np.int32
+            },
+            'timestamp': {
+                'dtype': np.float32
             }
         }
 
