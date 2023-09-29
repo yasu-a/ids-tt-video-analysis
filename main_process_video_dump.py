@@ -57,7 +57,7 @@ def iter_results(video_path):
 
         yield_count = 0
 
-        bar = tqdm(index_flag_pairs, total=n_output)
+        bar = tqdm(index_flag_pairs)
         for index, flag in bar:
             if not cap.grab():
                 break
