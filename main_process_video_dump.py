@@ -9,8 +9,18 @@ from tqdm import tqdm
 
 import dataset
 
+SPECIFIED_FPS = 29.97
+
 
 def iter_results(video_path):
+    # create VideoCapture instance
+    cap = cv2.VideoCapture(video_path)
+
+    # extract meta
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    frame_rate = float(cap.get(cv2.CAP_PROP_FPS))
+    assert abs(frame_rate - SPECIFIED_FPS) < 1e-4, frame_rate
+
     # process config
     STEP = 5
 
@@ -19,19 +29,12 @@ def iter_results(video_path):
         pattern = np.zeros(STEP, dtype=int)
         pattern[:3] = [1, 2, 3]
 
-        for index in itertools.count():
+        for index in range(frame_count):
             flag = pattern[index % STEP]
             yield index, flag
 
     index_flag_pairs = list(flag_it())
     n_output = len(index_flag_pairs)
-
-    # create VideoCapture instance
-    cap = cv2.VideoCapture(video_path)
-
-    # extract meta
-    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    frame_rate = int(cap.get(cv2.CAP_PROP_FPS))
 
     # yield meta
     yield dict(
@@ -54,7 +57,7 @@ def iter_results(video_path):
 
         yield_count = 0
 
-        bar = tqdm(index_flag_pairs, total=index_flag_pairs)
+        bar = tqdm(index_flag_pairs, total=n_output)
         for index, flag in bar:
             if not cap.grab():
                 break
