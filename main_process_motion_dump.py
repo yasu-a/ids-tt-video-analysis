@@ -45,6 +45,7 @@ def process(video_name, rect, start=None, stop=None):
 
                 motion_images = src_current['motion'], src_next['motion']
                 original_images = src_current['original'], src_next['original']
+                ts = src_current['timestamp']
 
                 result = detector.compute(original_images, motion_images)
 
@@ -61,12 +62,16 @@ def process(video_name, rect, start=None, stop=None):
                 if result['valid']:
                     data_dct = dict(
                         start=process_matrix(result['global_motion_center_a']),
-                        end=process_matrix(result['global_motion_center_b'])
+                        end=process_matrix(result['global_motion_center_b']),
+                        frame_index=i,
+                        timestamp=ts
                     )
                 else:
                     data_dct = dict(
                         start=process_matrix(None),
-                        end=process_matrix(None)
+                        end=process_matrix(None),
+                        frame_index=i,
+                        timestamp=ts
                     )
                 m_store.put(i, data_dct)
 

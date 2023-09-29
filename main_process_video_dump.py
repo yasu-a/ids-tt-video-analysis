@@ -11,6 +11,21 @@ import dataset
 
 
 def iter_results(video_path):
+    # process config
+    STEP = 5
+
+    # output frame index and characteristic
+    def flag_it():
+        pattern = np.zeros(STEP, dtype=int)
+        pattern[:3] = [1, 2, 3]
+
+        for index in itertools.count():
+            flag = pattern[index % STEP]
+            yield index, flag
+
+    index_flag_pairs = list(flag_it())
+    n_output = len(index_flag_pairs)
+
     # create VideoCapture instance
     cap = cv2.VideoCapture(video_path)
 
@@ -21,11 +36,9 @@ def iter_results(video_path):
     # yield meta
     yield dict(
         frame_count=frame_count,
-        frame_rate=frame_rate
+        frame_rate=frame_rate,
+        n_output=n_output
     )
-
-    # process config
-    STEP = 5
 
     # utils
     def iter_frames(time_start=None, time_end=None):
@@ -41,15 +54,7 @@ def iter_results(video_path):
 
         yield_count = 0
 
-        def flag_it():
-            pattern = np.zeros(STEP, dtype=int)
-            pattern[:3] = [1, 2, 3]
-
-            for index in itertools.count():
-                flag = pattern[index % STEP]
-                yield index, flag
-
-        bar = tqdm(flag_it(), total=frame_count)
+        bar = tqdm(index_flag_pairs, total=index_flag_pairs)
         for index, flag in bar:
             if not cap.grab():
                 break
@@ -158,7 +163,10 @@ def process(video_name, signal: list = None):
     it = iter_results(frame_dump_io.video_path)
     meta = next(it)
     # FIXME: max_entries=meta['frame_count'] is too large
-    with frame_dump_io.get_storage(mode='w', max_entries=meta['frame_count']) as storage:
+    with frame_dump_io.get_storage(
+            mode='w',
+            max_entries=meta['n_output']
+    ) as storage:
         for i, data_dct in it:
             storage.put(i, data_dct)
             if signal and signal[0]:
