@@ -15,6 +15,16 @@ def inspect(video_name, rect, start=None, stop=None):
             mode='r'
     ) as vf_store:
         print(f'output={vf_store.count()}')
+        total_shapes = {}
+        for i in range(vf_store.count()):
+            data_dct = vf_store.get(i)
+            for k, v in data_dct.items():
+                shape = v.shape
+                total_shape = total_shapes.get(k)
+                if total_shape is not None:
+                    assert total_shape == shape, (total_shape, shape)
+                total_shapes[k] = shape
+        print({k: (vf_store.count(), *v) for k, v in total_shapes.items()})
 
 
 def main(video_name):
