@@ -21,8 +21,6 @@ def iter_results(video_path):
     frame_rate = float(cap.get(cv2.CAP_PROP_FPS))
     assert abs(frame_rate - SPECIFIED_FPS) < 1e-4, frame_rate
 
-    frame_count = 100
-
     # process config
     STEP = 5
 
@@ -36,7 +34,7 @@ def iter_results(video_path):
             yield index, flag
 
     index_flag_pairs = list(flag_it())
-    n_output = len(index_flag_pairs)
+    n_output = int(sum(f == 3 for idx, f in index_flag_pairs))
 
     # yield meta
     yield dict(
@@ -167,7 +165,7 @@ def process(video_name, signal: list = None):
     frame_dump_io = dataset.FrameDumpIO(video_name=video_name)
     it = iter_results(frame_dump_io.video_path)
     meta = next(it)
-    # FIXME: max_entries=meta['frame_count'] is too large
+    print(meta)
     with frame_dump_io.get_storage(
             mode='w',
             max_entries=meta['n_output']
