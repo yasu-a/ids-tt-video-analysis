@@ -5,7 +5,7 @@ import scipy.ndimage
 import skimage.feature
 from sklearn.metrics.pairwise import cosine_similarity
 
-import util
+from legacy import util
 
 
 class ExtremaFeatureMotionDetector:
@@ -362,7 +362,7 @@ class ExtremaFeatureMotionDetector:
 
 
 def main():
-    from util import motions, originals
+    from legacy.util import motions, originals
 
     i = 193
     motion_images = motions[i], motions[i + 1]

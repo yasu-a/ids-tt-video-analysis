@@ -139,6 +139,7 @@ class MemoryMapStorage:
 
     def close(self):
         for v in self.__data.values():
+            # noinspection PyProtectedMember
             v._mmap.close()
 
     def __enter__(self):

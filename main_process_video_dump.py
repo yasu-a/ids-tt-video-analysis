@@ -21,6 +21,8 @@ def iter_results(video_path):
     frame_rate = float(cap.get(cv2.CAP_PROP_FPS))
     assert abs(frame_rate - SPECIFIED_FPS) < 1e-4, frame_rate
 
+    frame_count = 100
+
     # process config
     STEP = 5
 

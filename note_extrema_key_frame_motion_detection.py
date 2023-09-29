@@ -2,9 +2,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage
 
-import util
+from legacy import util
 
-from util import motions, originals, tss
+from legacy.util import motions, originals
 
 np.set_printoptions(suppress=True)
 
