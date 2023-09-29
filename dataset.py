@@ -138,7 +138,8 @@ class MemoryMapStorage:
         return np.array(self.__get_array(name))
 
     def close(self):
-        for v in self.__data.values():
+        for k, v in self.__data.items():
+            print(f'[{type(self).__name__}] closing mmap {k!r}...')
             # noinspection PyProtectedMember
             v._mmap.close()
 
