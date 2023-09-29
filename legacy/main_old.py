@@ -3,7 +3,7 @@ import os
 
 import cv2
 
-from extract import VideoFrameReader
+from legacy.extract import VideoFrameReader
 
 path = os.path.expanduser(r'~\Desktop/idsttvideos/singles')
 glob_pattern = os.path.join(path, r'**/*.mp4')
@@ -57,7 +57,7 @@ def main():
     import imageio.v2 as iio
 
     out = iio.get_writer(
-        'out.mp4',
+        '../out.mp4',
         format='FFMPEG',
         fps=vfr.fps / STEP,
         mode='I',
@@ -96,7 +96,7 @@ def main():
         )
 
         if i % 10 == 0:
-            np.save('out.npy', np.vstack(tot))
+            np.save('../out.npy', np.vstack(tot))
 
     out.close()
 
