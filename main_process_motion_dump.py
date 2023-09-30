@@ -2,6 +2,8 @@ import sys
 
 import numpy as np
 
+import train_input
+
 np.set_printoptions(suppress=True)
 
 from tqdm import tqdm
@@ -20,8 +22,11 @@ def process_rect(rect):
 NUM_MOTION_VECTORS_MAX = 64
 
 
-def process(video_name, rect, start=None, stop=None):
+def process(video_name, rect=None, start=None, stop=None):
     assert start is None, 'providing start is forbidden'
+
+    if rect is None:
+        rect = train_input.load_rect(video_name)
 
     with dataset.VideoFrameStorage(
             dataset.get_video_frame_dump_dir_path(video_name),
