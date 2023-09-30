@@ -10,6 +10,8 @@ import dataset
 
 SPECIFIED_FPS = 29.97
 
+RESIZE_RATIO = 0.3
+
 
 def iter_results(video_path):
     # create VideoCapture instance
@@ -105,7 +107,7 @@ def iter_results(video_path):
 
     @vectorize_image_set
     def pre_process(image):
-        image = cv2.resize(image, None, fx=0.3, fy=0.3)
+        image = cv2.resize(image, None, fx=RESIZE_RATIO, fy=RESIZE_RATIO)
         image = image / 256.0
         assert image.max() < 1.0, image.max()
         return image
