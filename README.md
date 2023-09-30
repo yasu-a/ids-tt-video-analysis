@@ -54,3 +54,7 @@ Disabled
 Enabled
 
 ![img](presen_materials/motion_centroid_correction/out_with_motion_correction.png)
+
+# Motion Energy Random Forest Rally-Start Classification
+
+https://github.com/yasu-a/ids-tt-video-analysis/blob/yasu/update/presen_materials/local_max_feature_motion_vectors.mp4
