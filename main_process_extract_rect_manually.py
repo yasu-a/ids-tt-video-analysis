@@ -93,14 +93,6 @@ if __name__ == '__main__':
     if args:
         video_name = args[0]
     else:
-        video_name = None
-    main(video_name=video_name)
-
-"""
-Enter image width(=count of x): 1749
-Enter image height(=count of y): 982
-Enter left x of net: 720
-Enter right x of net: 1019
-Enter top y of player: 182
-Enter bottom y of player: 838
-"""
+        vn = None
+    assert vn is not None, 'video_name=None is forbidden'
+    main(video_name=vn)
