@@ -1,5 +1,3 @@
-import sys
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -10,17 +8,6 @@ import train_input
 import dataset
 
 from tqdm import tqdm
-
-with dataset.VideoFrameStorage(
-        dataset.get_video_frame_dump_dir_path(),
-        mode='r'
-) as vf_storage:
-    timestamp = vf_storage.get_all_of('timestamp')
-
-train_input_df, rally_mask = train_input.load_rally_mask(
-    './train/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
-    timestamp
-)
 
 
 def split_vertically(n_split, offset, height, points):
@@ -56,12 +43,12 @@ with dataset.MotionStorage(
         dataset.get_motion_dump_dir_path(),
         mode='r',
 ) as m_store:
-    print(m_store.get_all_of('timestamp'))
     N_SPLIT = 5
     N_MAX_MOTION = 32
     mv_x = [[] for _ in range(N_SPLIT)]
-    fs, fe = 0, 13000
+    fs, fe = 0, 13321
     fe = min(fe, m_store.count())
+    timestamp = []
     for i in tqdm(range(fs, fe)):
         data_dct = m_store.get(i)
         start, end = data_dct['start'], data_dct['end']
@@ -88,6 +75,8 @@ with dataset.MotionStorage(
                 dx[0] = 0
             mv_x[j].append(list(dx))
 
+        timestamp.append(data_dct['timestamp'])
+
     mv_x = np.array(mv_x)
 
     print(mv_x.shape)
@@ -97,20 +86,32 @@ with dataset.MotionStorage(
     )
     print(features['mean'].shape)
 
+    timestamp = np.array(timestamp)
+
+    _, rally_mask = train_input.load_rally_mask(
+        './train/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
+        timestamp
+    )
+
+    del fs
+    del fe
+
     PLOT_FIGURE = False
     if PLOT_FIGURE:
         def plot_figure():
             fig, axes = plt.subplots(N_SPLIT + 1, 1, figsize=(200, 10), sharex=True)
-            axes[0].set_xlim(0, fe - fs)
-            axes[0].imshow(np.tile(rally_mask[fs:fe][:, None], 30).T)
+            axes[0].imshow(np.tile(rally_mask[:, None], 30).T)
             for i in range(N_SPLIT):
                 axes[i + 1].plot(features['mean'][i], label='mean', alpha=0.7)
                 axes[i + 1].plot(features['std'][i], label='std', alpha=0.7)
                 axes[i + 1].legend()
 
             def ax_edit_ticklabel(ax):
-                ax.set_xticklabels(timestamp[fs:][ax.get_xticks().astype(int)].round(1),
-                                   rotation=90)
+                ax.set_xlim(0, timestamp.size - 1)
+                ts_max = (timestamp.size - 1) // 100 * 100
+                ax.set_xticks(np.linspace(0, ts_max, ts_max // 100))
+                ax.set_xticklabels(timestamp[ax.get_xticks().astype(int)].round(1))
+                ax.tick_params(axis="x", labelrotation=90)
 
             ax_edit_ticklabel(axes[0])
 
@@ -121,9 +122,6 @@ with dataset.MotionStorage(
         plot_figure()
 
     print({k: v.shape for k, v in features.items()})
-
-    WINDOW_WIDTH_HALF = 6
-    WINDOW_WIDTH_FULL = WINDOW_WIDTH_HALF + 1 + WINDOW_WIDTH_HALF
 
 
     def extract_motion_energy(src):
@@ -136,7 +134,7 @@ with dataset.MotionStorage(
         )
 
         ts = np.pad(
-            timestamp[fs:fe],
+            timestamp,
             pad_width=((1, 1),),
             mode='reflect'
         )
@@ -146,36 +144,10 @@ with dataset.MotionStorage(
         motion_energy = np.square(diff)
         return motion_energy
 
-        # slide = np.lib.stride_tricks.sliding_window_view(
-        #     np.pad(
-        #         diff,
-        #         ((0, 0), (WINDOW_WIDTH_HALF, WINDOW_WIDTH_HALF)),
-        #         mode='reflect'
-        #     ),
-        #     window_shape=(src.shape[0], WINDOW_WIDTH_FULL),
-        # )[0]
-        # slide = np.swapaxes(slide, 0, 1)
-        #
-        # motion_energy = np.square(slide)
 
-        # i = 1
-        # fig, axes = plt.subplots(7, 1, figsize=(100, 25), sharex=True)
-        # axes[0].imshow(np.tile(rally_mask[fs:fe][:, None], 30).T)
-        # axes[-1].imshow(np.tile(rally_mask[fs:fe][:, None], 30).T)
-        # axes[1].plot(src[i])
-        # axes[2].plot(motion_energy[:, i, WINDOW_WIDTH_HALF])
-        # axes[3].plot(motion_energy.max(axis=2)[:, i])
-        # axes[4].plot(motion_energy.mean(axis=2)[:, i])
-        # axes[5].plot(motion_energy.min(axis=2)[:, i])
-        # fig.tight_layout()
-        # fig.show()
-
-        # return motion_energy.mean(axis=2)
-
-
-    FEATURE_BLOCK_SIZE = 5
+    FEATURE_BLOCK_SIZE = 3
     assert FEATURE_BLOCK_SIZE % 2 == 1 and FEATURE_BLOCK_SIZE >= 3
-    N_FEATURE_BLOCKS = 5
+    N_FEATURE_BLOCKS = 11
     FEATURE_WIDTH = FEATURE_BLOCK_SIZE * N_FEATURE_BLOCKS
     assert FEATURE_WIDTH % 2 == 1
 
@@ -215,22 +187,28 @@ with dataset.MotionStorage(
     features = np.concatenate(features, axis=1)
     print(features.shape)
 
-    rm = rally_mask[fs:fe].astype(int)
+    rm = rally_mask.astype(int)
     mask = (rm[1:] - rm[:-1]) > 0
     index_rally_begin = np.where(mask)[0]
-
 
     # fig, axes = plt.subplots(2, 1, figsize=(100, 8))
     # axes[0].plot(mask)
     # axes[1].plot(rm[:-1])
     # fig.show()
 
+    Y_DATA_MARGIN = 10
+
+
     def create_y_data():
         assert rm.ndim == 1, rm.shape
         index_delta = np.arange(rm.size)[:, None] - index_rally_begin
         nearest_rally_begin_index = index_rally_begin[np.abs(index_delta).argmin(axis=1)]
-        nearest_rally_begin_index_delta = np.abs(nearest_rally_begin_index - np.arange(rm.size))
-        y = nearest_rally_begin_index_delta < FEATURE_BLOCK_SIZE
+        nearest_rally_begin_index_delta = nearest_rally_begin_index - np.arange(rm.size)
+        # y = (-Y_DATA_MARGIN < nearest_rally_begin_index_delta) & (
+        #             nearest_rally_begin_index_delta < 0)
+        y = (0 < nearest_rally_begin_index_delta) & (
+                nearest_rally_begin_index_delta < Y_DATA_MARGIN)
+        # y = np.abs(nearest_rally_begin_index_delta) < Y_DATA_MARGIN // 2
 
         # fig, axes = plt.subplots(3, 1, figsize=(100, 8))
         # axes[0].plot(rm[:-1])
@@ -244,13 +222,6 @@ with dataset.MotionStorage(
     x = features
     y = create_y_data()
 
-    target_idx = np.random.choice(np.where(~y)[0], size=y.sum() * 8, replace=False)
-    mask = np.zeros(y.size, dtype=bool)
-    mask[target_idx] = 1
-    mask[y] = 1
-    x = x[mask]
-    y = y[mask]
-
     # plt.figure()
     # j = 11
     # plt.hist(x[:, j][y], bins=128, alpha=0.5)
@@ -260,38 +231,29 @@ with dataset.MotionStorage(
     n_neg, n_pos = (~y).sum(), y.sum()
     print(f'first {x.shape=} {y.shape=} {n_neg=}, {n_pos=}')
 
-    import sklearn.model_selection
+    neg_idx, pos_idx = np.where(~y)[0], np.where(y)[0]
+    neg_idx = np.random.choice(neg_idx, n_pos, replace=False)
+    sample_idx = np.sort(np.concatenate([neg_idx, pos_idx]))
+    x = x[sample_idx]
+    y = y[sample_idx]
 
-    x_train_0, x_test_0, y_train_0, y_test_0 = sklearn.model_selection.train_test_split(
-        x[~y], y[~y], test_size=0.1, random_state=42
-    )
+    n_neg, n_pos = (~y).sum(), y.sum()
+    print(f'last {x.shape=} {y.shape=} {n_neg=}, {n_pos=}')
 
-    x_train_1, x_test_1, y_train_1, y_test_1 = sklearn.model_selection.train_test_split(
-        x[y], y[y], test_size=0.1, random_state=42
-    )
+    # import sklearn.model_selection
+    #
+    # x_train, x_test, y_train, y_test = sklearn.model_selection.train_test_split(
+    #     x, y, test_size=0.1, random_state=42
+    # )
 
-    x_train, x_test, y_train, y_test = np.array([]), np.array([]), np.array([]), np.array([])
-    reduce = np.random
-    for n in 'x_train, x_test, y_train, y_test'.split(','):
-        a = locals()[n.strip() + '_0']
-        b = locals()[n.strip() + '_1']
-        locals()[n.strip()] = np.concatenate([a, b], axis=0)
-
-    n_neg, n_pos = (~y_train).sum(), y_train.sum()
-    print(f'{x_train.shape} {y_train.shape} {n_neg=}, {n_pos=}')
-    n_neg, n_pos = (~y_train).sum(), y_train.sum()
-    pos_idx = np.where(y_train)[0]
-    pos_idx_samples = np.random.choice(pos_idx, size=n_neg - n_pos, replace=True)
-    x_train = np.concatenate([x_train, x_train[pos_idx_samples]], axis=0)
-    y_train = np.concatenate([y_train, y_train[pos_idx_samples]], axis=0)
-    n_neg, n_pos = (~y_train).sum(), y_train.sum()
-    print(f'{x_train.shape} {y_train.shape} {n_neg=}, {n_pos=}')
+    SIZE = int(y.size * 0.33)
+    x_train, x_test, y_train, y_test = x[SIZE:], x[:SIZE], y[SIZE:], y[:SIZE]
 
     from sklearn.ensemble import RandomForestClassifier
 
     cl = RandomForestClassifier(
         max_depth=3,
-        n_estimators=128,
+        n_estimators=256,
         verbose=True,
         random_state=42,
         n_jobs=4
@@ -303,3 +265,26 @@ with dataset.MotionStorage(
     y_true = y_test
     y_pred = cl.predict(x_test)
     print(sklearn.metrics.confusion_matrix(y_true, y_pred))
+    print(sklearn.metrics.f1_score(y_true, y_pred))
+
+    y_pred = cl.predict(features).astype(int)
+    print(y_pred)
+
+    print(rally_mask.shape, y_pred.shape)
+    fig, axes = plt.subplots(2, 1, figsize=(100, 3), sharex=True)
+    axes[0].imshow(np.tile(rally_mask[:, None], 30).T)
+    axes[1].imshow(np.tile(y_pred[:, None], 30).T)
+
+
+    def ax_edit_ticklabel(ax):
+        ax.set_xlim(0, timestamp.size - 1)
+        ts_max = (timestamp.size - 1) // 100 * 100
+        ax.set_xticks(np.linspace(0, ts_max, ts_max // 100))
+        ax.set_xticklabels(timestamp[ax.get_xticks().astype(int)].round(1))
+        ax.tick_params(axis="x", labelrotation=90)
+
+
+    ax_edit_ticklabel(axes[0])
+
+    fig.tight_layout()
+    fig.show()
