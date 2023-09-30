@@ -3,7 +3,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
-from util import motions, originals
+from legacy.util import motions, originals
 
 np.set_printoptions(suppress=True)
 

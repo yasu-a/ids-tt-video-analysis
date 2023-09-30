@@ -1,6 +1,5 @@
-import frame_processor.mapper as _mapper
+import legacy.frame_processor.mapper as _mapper
 import frame_processor.stage as _stage
-from .common import FrameEntry, Product
 from .pipeline import create_pipeline
 
 

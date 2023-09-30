@@ -1,4 +1,3 @@
-import glob
 import os
 
 import cv2
@@ -7,55 +6,55 @@ from tqdm import tqdm
 
 import frame_processor as fp
 from async_writer import AsyncVideoFrameWriter
-from extract import VideoFrameReader
+from legacy.extract import VideoFrameReader
 
 
 @fp.stage.each
-@fp.mapper.process(fp.IMAGE)
-@fp.mapper.unary
+@legacy.frame_processor.mapper.process(fp.IMAGE)
+@legacy.frame_processor.mapper.unary
 def stage_sample_quarter(frame):
     return frame[::2, ::2]
 
 
 @fp.stage.each
-@fp.mapper.process(fp.IMAGE)
-@fp.mapper.unary
+@legacy.frame_processor.mapper.process(fp.IMAGE)
+@legacy.frame_processor.mapper.unary
 def stage_gaussian_filter(frame):
     return cv2.GaussianBlur(frame, (31, 31), min(frame.shape) / 10)
 
 
 @fp.stage.contiguous
-@fp.mapper.process(fp.IMAGE)
-@fp.mapper.past
+@legacy.frame_processor.mapper.process(fp.IMAGE)
+@legacy.frame_processor.mapper.past
 def stage_square_diff_two_frames(prev_frame, cur_frame):
     return np.square(cur_frame - prev_frame)
 
 
 @fp.stage.contiguous
-@fp.mapper.process(fp.IMAGE)
-@fp.mapper.past
+@legacy.frame_processor.mapper.process(fp.IMAGE)
+@legacy.frame_processor.mapper.past
 def stage_prod_two_frames(prev_frame, cur_frame):
     return cur_frame * prev_frame
 
 
 @fp.stage.each
-@fp.mapper.process(fp.IMAGE)
-@fp.mapper.unary
+@legacy.frame_processor.mapper.process(fp.IMAGE)
+@legacy.frame_processor.mapper.unary
 def stage_bgr2rgb(frame):
     return cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
 
 @fp.stage.each
-@fp.mapper.process(fp.IMAGE)
-@fp.mapper.unary
+@legacy.frame_processor.mapper.process(fp.IMAGE)
+@legacy.frame_processor.mapper.unary
 def stage_rgb2bgr(frame):
     return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
 
 def stage_clamp(v_max):
     @fp.stage.each
-    @fp.mapper.process(fp.IMAGE)
-    @fp.mapper.unary
+    @legacy.frame_processor.mapper.process(fp.IMAGE)
+    @legacy.frame_processor.mapper.unary
     def stage(frame):
         return np.clip(frame / v_max, 0, 1.0 - 1.0 / 256.0)
 

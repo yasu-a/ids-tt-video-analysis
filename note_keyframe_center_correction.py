@@ -1,15 +1,10 @@
-import sys
-
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage
 
-import util
-from util import motions, originals, tss
+from legacy.util import motions, originals, tss
 
 np.set_printoptions(suppress=True)
-
-from tqdm import tqdm
 
 from util_extrema_feature_motion_detector import ExtremaFeatureMotionDetector
 

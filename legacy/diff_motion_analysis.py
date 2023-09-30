@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 def get_latest_path(target):
     dct = {}
-    for name in os.listdir('./out'):
+    for name in os.listdir('../out'):
         pure_name, _ = os.path.splitext(name)
         video_name, ts = pure_name.rsplit('_', maxsplit=1)
         ts = int(ts)
@@ -16,7 +16,7 @@ def get_latest_path(target):
             dct[ts] = name
     lst = sorted(dct.items(), key=lambda x: x[0])
     target_name = lst[-1][1]
-    return os.path.join('./out', target_name)
+    return os.path.join('../out', target_name)
 
 
 VIDEO_NAME = '20230205_04_Narumoto_Harimoto'

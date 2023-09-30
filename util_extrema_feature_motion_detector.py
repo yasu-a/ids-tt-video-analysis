@@ -5,7 +5,7 @@ import scipy.ndimage
 import skimage.feature
 from sklearn.metrics.pairwise import cosine_similarity
 
-import util
+from legacy import util
 
 
 class ExtremaFeatureMotionDetector:
@@ -235,8 +235,14 @@ class ExtremaFeatureMotionDetector:
                 r = int(tp.shape[0] * 0.5) // 2
                 tp[x * x + y * y > r * r] = 0
 
-                match = np.concatenate(np.where(tp == tp.max()))[:-1]
-                correction = match - center  # dst_original centroid - src_original centroid
+                mask_max = tp == tp.max()
+                if np.count_nonzero(mask_max) == 1:
+                    xs, ys, _ = np.where(mask_max)
+                    match = np.array([xs[0], ys[0]])
+                    correction = match - center  # dst_original centroid - src_original centroid
+                else:
+                    correction = np.array([0, 0])
+
                 return correction
 
             def __generate_motion_center(self):
@@ -356,7 +362,7 @@ class ExtremaFeatureMotionDetector:
 
 
 def main():
-    from util import motions, originals
+    from legacy.util import motions, originals
 
     i = 193
     motion_images = motions[i], motions[i + 1]

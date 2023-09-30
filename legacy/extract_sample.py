@@ -29,7 +29,7 @@ vfr = VideoFrameReader(video_path)
 
 # 書き出し先の作成
 out = iio.get_writer(
-    'out.mp4',
+    '../out.mp4',
     format='FFMPEG',
     fps=vfr.fps / STEP,
     mode='I',

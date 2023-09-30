@@ -1,4 +1,4 @@
-import extract
+from .. import extract
 from .common import check_entry_iterable
 
 
