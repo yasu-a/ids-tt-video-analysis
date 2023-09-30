@@ -1,5 +1,3 @@
-import sys
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -10,17 +8,6 @@ import train_input
 import dataset
 
 from tqdm import tqdm
-
-with dataset.VideoFrameStorage(
-        dataset.get_video_frame_dump_dir_path(),
-        mode='r'
-) as vf_storage:
-    timestamp = vf_storage.get_all_of('timestamp')
-
-train_input_df, rally_mask = train_input.load_rally_mask(
-    './train/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
-    timestamp
-)
 
 
 def split_vertically(n_split, offset, height, points):
@@ -59,7 +46,8 @@ with dataset.MotionStorage(
     N_SPLIT = 5
     N_MAX_MOTION = 32
     mv_x = [[] for _ in range(N_SPLIT)]
-    fs, fe = 0, 3000
+    timestamp = []
+    fs, fe = 0, 13000
     for i in tqdm(range(fs, fe)):
         data_dct = m_store.get(i)
         start, end = data_dct['start'], data_dct['end']
@@ -84,6 +72,8 @@ with dataset.MotionStorage(
                 dx[0] = 0
             mv_x[j].append(list(dx))
 
+        timestamp.append(data_dct['timestamp'])
+
     mv_x = np.array(mv_x)
 
     print(mv_x.shape)
@@ -92,6 +82,14 @@ with dataset.MotionStorage(
         std=np.nanstd(mv_x, axis=2)
     )
     print(features['mean'].shape)
+
+    timestamp = np.array(timestamp)
+    print(f'{timestamp=}')
+
+    _, rally_mask = train_input.load_rally_mask(
+        './train/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
+        timestamp
+    )
 
     PLOT_FIGURE = False
     if PLOT_FIGURE:
@@ -105,7 +103,7 @@ with dataset.MotionStorage(
                 axes[i + 1].legend()
 
             def ax_edit_ticklabel(ax):
-                ax.set_xticklabels(timestamp[fs:][ax.get_xticks().astype(int)].round(1),
+                ax.set_xticklabels(timestamp[ax.get_xticks().astype(int)].round(1),
                                    rotation=90)
 
             ax_edit_ticklabel(axes[0])
@@ -132,7 +130,7 @@ with dataset.MotionStorage(
         )
 
         ts = np.pad(
-            timestamp[fs:fe],
+            timestamp,
             pad_width=((1, 1),),
             mode='reflect'
         )
@@ -173,7 +171,7 @@ with dataset.MotionStorage(
         )
 
         ts = np.pad(
-            timestamp[fs:fe],
+            timestamp,
             pad_width=((1, 1),),
             mode='reflect'
         )
