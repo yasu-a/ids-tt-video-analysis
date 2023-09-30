@@ -91,7 +91,7 @@ def main(video_name):
 if __name__ == '__main__':
     _, *args = sys.argv
     if args:
-        video_name = args[0]
+        vn = args[0]
     else:
         vn = None
     assert vn is not None, 'video_name=None is forbidden'
