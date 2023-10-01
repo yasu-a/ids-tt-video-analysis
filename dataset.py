@@ -1,5 +1,6 @@
 import json
 import os
+import pickle
 import traceback
 import warnings
 
@@ -241,3 +242,25 @@ def get_motion_dump_dir_path(video_name=None):
         config.MOTION_DUMP_DIR_PATH,
         video_name
     )
+
+
+class PickleCache:
+    def __init__(self, video_name):
+        self.__root_path = os.path.join(
+            config.FEATURE_CACHE_PATH,
+            video_name
+        )
+        os.makedirs(self.__root_path, exist_ok=True)
+
+    def dump(self, name, obj):
+        path = os.path.join(self.__root_path, name + '.pickle')
+        with open(path, 'wb') as f:
+            pickle.dump(obj, f)
+
+    def load(self, name):
+        path = os.path.join(self.__root_path, name + '.pickle')
+        try:
+            with open(path, 'rb') as f:
+                return pickle.load(f)
+        except (pickle.PickleError, FileNotFoundError):
+            return None
