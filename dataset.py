@@ -1,5 +1,7 @@
 import json
 import os
+import traceback
+import warnings
 
 import numpy as np
 
@@ -185,7 +187,7 @@ class MotionStorage(MemoryMapStorage):
 
 class FrameDumpIO:
     def __init__(self, video_name=None):
-        self.__video_name = video_name or config.DEFAULT_VIDEO_NAME
+        self.__video_name = coerce_video_name(video_name)
 
     def get_storage(self, mode, max_entries=None):
         return VideoFrameStorage(
@@ -205,8 +207,20 @@ class FrameDumpIO:
         )
 
 
+def _print_warning(msg):
+    warnings.warn(msg)
+    traceback.print_stack()
+
+
+def coerce_video_name(video_name):
+    if video_name is None:
+        video_name = config.DEFAULT_VIDEO_NAME
+        _print_warning('Default video name used')
+    return video_name
+
+
 def get_video_path(video_name=None):
-    video_name = video_name or config.DEFAULT_VIDEO_NAME
+    video_name = coerce_video_name(video_name)
     return os.path.join(
         config.VIDEO_DIR_PATH,
         video_name + '.mp4'
@@ -214,7 +228,7 @@ def get_video_path(video_name=None):
 
 
 def get_video_frame_dump_dir_path(video_name=None):
-    video_name = video_name or config.DEFAULT_VIDEO_NAME
+    video_name = coerce_video_name(video_name)
     return os.path.join(
         config.FRAME_DUMP_DIR_PATH,
         video_name,
@@ -222,7 +236,7 @@ def get_video_frame_dump_dir_path(video_name=None):
 
 
 def get_motion_dump_dir_path(video_name=None):
-    video_name = video_name or config.DEFAULT_VIDEO_NAME
+    video_name = coerce_video_name(video_name)
     return os.path.join(
         config.MOTION_DUMP_DIR_PATH,
         video_name
