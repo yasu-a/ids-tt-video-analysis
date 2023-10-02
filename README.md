@@ -57,4 +57,4 @@ Enabled
 
 # Motion Energy Random Forest Rally-Start Classification
 
-https://github.com/yasu-a/ids-tt-video-analysis/blob/yasu/update/presen_materials/local_max_feature_motion_vectors.mp4
+https://github.com/yasu-a/ids-tt-video-analysis/blob/yasu/update/presen_materials/start_detection.mp4
