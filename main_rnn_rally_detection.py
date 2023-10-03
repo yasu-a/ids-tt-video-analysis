@@ -50,8 +50,10 @@ def x_rnn_reshape(x):
 
 
 def y_rnn_reshape(y):
+    y2 = create_y_data(y)
     y = y[SEQ_LEN - 1:][:, None]
-    return np.concatenate([~y, y], axis=1)
+    y2 = y2[SEQ_LEN - 1:][:, None]
+    return np.concatenate([~y & ~y2, y & ~y2, ~y & y2, y & y2], axis=1)
 
 
 if __name__ == '__main__':
@@ -89,9 +91,7 @@ if __name__ == '__main__':
         # model.add(Flatten())
         model.add(Dense(64))
         model.add(Activation("linear"))
-        model.add(Dense(2))
-        model.add(Activation("softmax"))
-        model.add(Dense(2))
+        model.add(Dense(4))
         model.add(Activation("softmax"))
         optimizer = Adam(learning_rate=0.001)
         model.compile(loss="mean_squared_error", optimizer=optimizer)
@@ -119,6 +119,8 @@ if __name__ == '__main__':
     # axes[1].imshow(y_pred.T)
     # axes[1].set_aspect('auto')
     # axes[1].plot(y_pred[:, 0], color='black')
-    axes[1].plot(y_pred[:, 1], color='red')
+    axes[1].plot(y_pred[:, 1], color='green')  # rally
+    axes[1].plot(y_pred[:, 2], color='blue')  # start
+    axes[1].plot(y_pred[:, 3], color='red')  # start & rally
     fig.tight_layout()
     fig.show()
