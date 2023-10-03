@@ -57,4 +57,10 @@ Enabled
 
 # Motion Energy Random Forest Rally-Start Classification
 
-https://github.com/yasu-a/ids-tt-video-analysis/blob/yasu/update/presen_materials/start_detection.mp4
+https://github.com/yasu-a/ids-tt-video-analysis/blob/master/presen_materials/start_detection.mp4
+
+# Partial Motion Mean Full Frame Differential Mean LSTM Rally Classification
+
+https://github.com/yasu-a/ids-tt-video-analysis/blob/master/presen_materials/note_rnn_rally_detection/rally_detection_rnn.mp4
+
+![img](presen_materials/note_rnn_rally_detection/rally_detection_rnn.png)
