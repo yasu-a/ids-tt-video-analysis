@@ -70,9 +70,9 @@ if __name__ == '__main__':
 
     length_of_sequence = SEQ_LEN
     n_feature = g.shape[1]
-    n_hidden = 300
+    n_hidden = 128
 
-    if 0:
+    if 1:
         from tensorflow.keras.models import Sequential
         from tensorflow.keras.layers import Dense, Activation
         from tensorflow.keras.layers import LSTM
@@ -85,17 +85,22 @@ if __name__ == '__main__':
             batch_input_shape=(None, length_of_sequence, n_feature),
             return_sequences=False
         ))
-        model.add(Dense(32))
+
+        # model.add(Flatten())
+        model.add(Dense(64))
         model.add(Activation("linear"))
+        model.add(Dense(2))
+        model.add(Activation("softmax"))
         model.add(Dense(2))
         model.add(Activation("softmax"))
         optimizer = Adam(learning_rate=0.001)
         model.compile(loss="mean_squared_error", optimizer=optimizer)
+        model.summary()
 
         early_stopping = EarlyStopping(monitor='val_loss', mode='auto', patience=20)
         model.fit(
             x_train, y_train,
-            batch_size=512,
+            batch_size=1024,
             epochs=100,
             validation_split=0.1,
             callbacks=[early_stopping]
@@ -106,13 +111,14 @@ if __name__ == '__main__':
         from tensorflow.keras.models import load_model
 
         model = load_model('model')
+        model.summary()
 
     y_pred = model.predict(x_test)
     fig, axes = plt.subplots(2, 1, figsize=(100, 5), sharex=True)
     axes[0].imshow(np.tile(y_test[:, 1][:, None], 30).T)
     # axes[1].imshow(y_pred.T)
     # axes[1].set_aspect('auto')
-    axes[1].plot(y_pred[:, 0], color='black')
+    # axes[1].plot(y_pred[:, 0], color='black')
     axes[1].plot(y_pred[:, 1], color='red')
     fig.tight_layout()
     fig.show()
