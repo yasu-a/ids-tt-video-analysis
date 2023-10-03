@@ -1,5 +1,7 @@
 # ids-tt-video-analysis
 
+![img](presen_materials/note_rnn_rally_detection/rally_detection_rnn.gif)
+
 # Run Scripts
 
 1. この階層に`config.py`という名前のファイルを作る
