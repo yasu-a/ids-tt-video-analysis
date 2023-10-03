@@ -1,7 +1,8 @@
 import multiprocessing as mp
 import os
 import time
-import imageio as iio
+
+import imageio.v2 as iio
 
 MAX_BACKLOG_FRAMES = 128
 
@@ -30,6 +31,7 @@ def _worker(q: mp.Queue, params: dict):
 
 class AsyncVideoFrameWriter:
     def __init__(self, path, fps):
+        path = os.path.abspath(path)
         os.makedirs(os.path.dirname(path), exist_ok=True)
 
         self.__q = mp.Queue(maxsize=MAX_BACKLOG_FRAMES)
