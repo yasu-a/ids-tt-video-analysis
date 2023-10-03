@@ -123,19 +123,22 @@ if __name__ == '__main__':
 
     y_pred = model.predict(x_test)
 
-    if 0:
+    if 1:
         fig, axes = plt.subplots(4, 1, figsize=(100, 10), sharex=True)
         axes[0].imshow(np.tile(y_test[:, -1][:, None], 30).T)
         # axes[1].imshow(y_pred.T)
         # axes[1].set_aspect('auto')
         # axes[1].plot(y_pred[:, 0], color='black')
+        axes[1].set_title('green red dup vaule')
         axes[1].plot(np.minimum(y_pred[:, 3], y_pred[:, 1]))
         axes[1].grid()
+        axes[2].set_title('blue red dup vaule')
         axes[2].plot(np.minimum(y_pred[:, 2], y_pred[:, 1]))
         axes[2].grid()
-        axes[3].plot(y_pred[:, 1], color='green')  # raise
-        axes[3].plot(y_pred[:, 2], color='blue')  # fall
-        axes[3].plot(y_pred[:, 3], color='red')  # rally
+        axes[3].plot(y_pred[:, 1], color='green', label='rise')  # rise
+        axes[3].plot(y_pred[:, 2], color='blue', label='fall')  # fall
+        axes[3].plot(y_pred[:, 3], color='red', label='rally')  # rally
+        axes[3].legend()
         axes[-1].grid()
 
         from PIL import Image
@@ -157,7 +160,7 @@ if __name__ == '__main__':
         fig.tight_layout()
         fig.show()
 
-    if 1:
+    if 0:
         import async_writer
         import dataset
         from PIL import Image, ImageDraw
