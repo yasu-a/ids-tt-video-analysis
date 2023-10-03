@@ -89,7 +89,7 @@ class MemoryMapStorage:
                 shape = self.__info_json['shape'][name]
                 self.__data[name] = np.memmap(
                     filename=self.__memmap_file_path(name),
-                    mode='r+',
+                    mode='r',
                     dtype=self._config[name]['dtype'],
                 ).reshape(shape)
             else:
