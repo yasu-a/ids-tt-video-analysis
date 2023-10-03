@@ -1,4 +1,6 @@
 import contextlib
+import functools
+import typing
 from functools import cached_property
 
 import numpy as np
@@ -61,28 +63,32 @@ class FeatureGenerator:
             for s, e in zip(start, end):
                 yield s, e
 
-    N_DIFF_FRAME_SPLIT = 5
+    @classmethod
+    @functools.cache
+    def __create_split_slices_2d(cls, shape, n_axis_split):
+        def slice_iterator():
+            w, h, *_ = shape
+            nw = w // n_axis_split
+            nh = h // n_axis_split
+            for i in range(n_axis_split):
+                si = slice(nw * i, None if i == n_axis_split - 1 else nw * (i + 1))
+                for j in range(n_axis_split):
+                    sj = slice(nh * j, None if j == n_axis_split - 1 else nh * (j + 1))
+                    yield si, sj
+
+        return tuple(slice_iterator())
 
     @classmethod
-    def __iter_split_slices(cls, shape):
-        w, h, *_ = shape
-        nw = w // cls.N_DIFF_FRAME_SPLIT
-        nh = h // cls.N_DIFF_FRAME_SPLIT
-        for i in range(cls.N_DIFF_FRAME_SPLIT):
-            si = slice(nw * i, None if i == cls.N_DIFF_FRAME_SPLIT - 1 else nw * (i + 1))
-            for j in range(cls.N_DIFF_FRAME_SPLIT):
-                sj = slice(nh * j, None if j == cls.N_DIFF_FRAME_SPLIT - 1 else nh * (j + 1))
-                yield si, sj
-
-    @classmethod
-    def __array_split_mean_2d(cls, a):
-        return np.array([a[s].mean() for s in cls.__iter_split_slices(a.shape)])
+    def __array_split_mean_2d(cls, a, n_axis_split):
+        return np.array([a[s].mean() for s in cls.__create_split_slices_2d(a.shape, n_axis_split)])
 
     N_DIFF_FRAME_FEATURE = 3
 
     def iter_diff_frame_feature(self):
+        n_axis_split = 5
+
         for diff in self.__iter_diff_frames():
-            split_mean = self.__array_split_mean_2d(diff)
+            split_mean = self.__array_split_mean_2d(diff, n_axis_split)
             split_mean_sorted = np.sort(split_mean)
             split_mean_arg_sorted = np.argsort(split_mean)
             diff_frame_feature = np.concatenate([
@@ -90,6 +96,14 @@ class FeatureGenerator:
                 (split_mean_arg_sorted[-self.N_DIFF_FRAME_FEATURE:] % self.N_DIFF_FRAME_SPLIT),
                 (split_mean_arg_sorted[-self.N_DIFF_FRAME_FEATURE:] // self.N_DIFF_FRAME_SPLIT)
             ])
+            yield diff_frame_feature
+
+    def iter_diff_frame_feature_full(self):
+        n_axis_split = 5
+
+        for diff in self.__iter_diff_frames():
+            split_mean = self.__array_split_mean_2d(diff, n_axis_split)
+            diff_frame_feature = split_mean.flatten()
             yield diff_frame_feature
 
     N_MOTION_SPLIT = 5
@@ -237,29 +251,68 @@ class FeatureGenerator:
         for feature in features:
             yield feature
 
-    def create_feature_vector(self):
-        def iter_feature_vector():
-            feature_iters = [
+    class Feature(typing.NamedTuple):
+        timestamp: np.ndarray
+        feature: np.ndarray
+        label: typing.Optional[np.ndarray]
+
+    def __create_feature(self, name, feature_iters, with_label):
+        def create_feature_vector():
+            def iter_feature_vector():
+                for fs in tqdm(zip(*feature_iters)):
+                    feature = np.concatenate(fs)
+                    yield feature
+
+            return np.stack(list(iter_feature_vector()))
+
+        def load_or_create_feature():
+            # convert feature cache file name
+            feature_cache_name = f'feature_{name}'
+
+            # retrieve data from cache
+            cached_feature_dct = self.__cache.load(feature_cache_name)
+
+            if cached_feature_dct is None:
+                # if cache data not found then generate data and add it to cache
+                result = self.Feature(
+                    timestamp=self.timestamp,
+                    feature=create_feature_vector(),
+                    label=None
+                )
+                cached_feature_dct = result._asdict()
+                self.__cache.dump(feature_cache_name, cached_feature_dct)
+            else:
+                # if cache data found then convert it to Feature instance
+                result = self.Feature(**cached_feature_dct)
+
+            # add label if with_label is True
+            if with_label:
+                label = train_input.load_rally_mask(
+                    f'./train/iDSTTVideoAnalysis_{self.__video_name}.csv',
+                    timestamps=self.timestamp
+                )[1].astype(bool)
+                result = result._replace(label=label)
+
+            return result
+
+        return load_or_create_feature()
+
+    def create(self, with_label=False):
+        return self.__create_feature(
+            name='diff_frame+motion_vector',
+            feature_iters=[
                 self.iter_diff_frame_feature(),
                 self.iter_motion_vector_feature()
-            ]
+            ],
+            with_label=with_label
+        )
 
-            for fs in tqdm(zip(*feature_iters)):
-                feature = np.concatenate(fs)
-                yield feature
-
-        return np.stack(list(iter_feature_vector()))
-
-    def create(self, label=False):
-        data = self.__cache.load('feature')
-        if data is None:
-            data = dict(
-                timestamp=self.timestamp,
-                feature=self.create_feature_vector()
-            )
-            self.__cache.dump('feature', data)
-        data['label'] = train_input.load_rally_mask(
-            f'./train/iDSTTVideoAnalysis_{self.__video_name}.csv',
-            timestamps=self.timestamp
-        )[1].astype(bool) if label else None
-        return data
+    def create2(self, with_label=False):
+        return self.__create_feature(
+            name='diff_frame_full+motion_vector',
+            feature_iters=[
+                self.iter_diff_frame_feature_full(),
+                self.iter_motion_vector_feature()
+            ],
+            with_label=with_label
+        )
