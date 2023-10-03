@@ -4,13 +4,7 @@ import numpy as np
 
 np.set_printoptions(suppress=True)
 
-import numpy as np
-
-np.set_printoptions(suppress=True)
-
 from feature_generator import FeatureGenerator
-
-import numpy as np
 
 Y_DATA_MARGIN = 10
 
@@ -50,31 +44,45 @@ def x_rnn_reshape(x):
 
 
 def y_rnn_reshape(y):
-    y2 = create_y_data(y)
-    y = y[SEQ_LEN - 1:][:, None]
-    y2 = y2[SEQ_LEN - 1:][:, None]
-    return np.concatenate([~y & ~y2, y & ~y2, ~y & y2, y & y2], axis=1)
+    # y2 = create_y_data(y)
+    y = y.astype(np.int8)
+
+    n_outer, n_inner = 8, 2
+
+    diff = np.concatenate([[0], y[1:] - y[:-1]])
+    idx = np.arange(y.size)
+    rise_idx, fall_idx = idx[diff == 1], idx[diff == -1]
+    rise_dist, fall_dist = idx - rise_idx[:, None], idx - fall_idx[:, None]
+    cls_pos = np.sum(np.logical_and(-n_outer <= rise_dist, rise_dist < n_inner), axis=0) > 0
+    cls_neg = np.sum(np.logical_and(-n_inner <= fall_dist, fall_dist < n_outer), axis=0) > 0
+    cls_one = y.astype(bool)
+    cls_num = np.select([cls_pos, cls_neg, cls_one], [1, 2, 3], default=0)
+
+    import keras.utils.np_utils
+    y = keras.utils.np_utils.to_categorical(cls_num)
+
+    return y[SEQ_LEN - 1:]
 
 
 if __name__ == '__main__':
-    fg = FeatureGenerator('20230205_04_Narumoto_Harimoto')
-    f = fg.create(label=True)
-    g, h = f['feature'], f['label']
+    video_name = '20230205_04_Narumoto_Harimoto'
+
+    fg = FeatureGenerator(video_name)
+    f = fg.create2(with_label=True)
+    g, h = f.feature, f.label
     print(f'{(g.shape, h.shape)=}')
 
     print(h.dtype, h.shape)
 
-    TEST_SPLIT_POINT = 9000
-    x_train, x_test = x_rnn_reshape(g[:TEST_SPLIT_POINT]), x_rnn_reshape(g[TEST_SPLIT_POINT:])
-    y_train, y_test = y_rnn_reshape(h[:TEST_SPLIT_POINT]), y_rnn_reshape(h[TEST_SPLIT_POINT:])
+    TEST_SPLIT_POINT = 2900
+    x_test, x_train = x_rnn_reshape(g[:TEST_SPLIT_POINT]), x_rnn_reshape(g[TEST_SPLIT_POINT:])
+    y_test, y_train = y_rnn_reshape(h[:TEST_SPLIT_POINT]), y_rnn_reshape(h[TEST_SPLIT_POINT:])
 
     print(f'{(x_train.shape, y_train.shape)=}')
 
-    length_of_sequence = SEQ_LEN
-    n_feature = g.shape[1]
     n_hidden = 128
 
-    if 1:
+    if 0:
         from tensorflow.keras.models import Sequential
         from tensorflow.keras.layers import Dense, Activation
         from tensorflow.keras.layers import LSTM
@@ -84,7 +92,7 @@ if __name__ == '__main__':
         model = Sequential()
         model.add(LSTM(
             n_hidden,
-            batch_input_shape=(None, length_of_sequence, n_feature),
+            batch_input_shape=(None, SEQ_LEN, g.shape[1]),
             return_sequences=False
         ))
 
@@ -97,11 +105,11 @@ if __name__ == '__main__':
         model.compile(loss="mean_squared_error", optimizer=optimizer)
         model.summary()
 
-        early_stopping = EarlyStopping(monitor='val_loss', mode='auto', patience=20)
+        early_stopping = EarlyStopping(monitor='val_loss', mode='auto', patience=40)
         model.fit(
             x_train, y_train,
-            batch_size=1024,
-            epochs=100,
+            batch_size=2048,
+            epochs=200,
             validation_split=0.1,
             callbacks=[early_stopping]
         )
@@ -114,13 +122,85 @@ if __name__ == '__main__':
         model.summary()
 
     y_pred = model.predict(x_test)
-    fig, axes = plt.subplots(2, 1, figsize=(100, 5), sharex=True)
-    axes[0].imshow(np.tile(y_test[:, 1][:, None], 30).T)
-    # axes[1].imshow(y_pred.T)
-    # axes[1].set_aspect('auto')
-    # axes[1].plot(y_pred[:, 0], color='black')
-    axes[1].plot(y_pred[:, 1], color='green')  # rally
-    axes[1].plot(y_pred[:, 2], color='blue')  # start
-    axes[1].plot(y_pred[:, 3], color='red')  # start & rally
-    fig.tight_layout()
-    fig.show()
+
+    if 0:
+        fig, axes = plt.subplots(4, 1, figsize=(100, 10), sharex=True)
+        axes[0].imshow(np.tile(y_test[:, -1][:, None], 30).T)
+        # axes[1].imshow(y_pred.T)
+        # axes[1].set_aspect('auto')
+        # axes[1].plot(y_pred[:, 0], color='black')
+        axes[1].plot(np.minimum(y_pred[:, 3], y_pred[:, 1]))
+        axes[1].grid()
+        axes[2].plot(np.minimum(y_pred[:, 2], y_pred[:, 1]))
+        axes[2].grid()
+        axes[3].plot(y_pred[:, 1], color='green')  # raise
+        axes[3].plot(y_pred[:, 2], color='blue')  # fall
+        axes[3].plot(y_pred[:, 3], color='red')  # rally
+        axes[-1].grid()
+
+        from PIL import Image
+
+
+        def generate_timestamp_ticklabel(ax):
+            n = TEST_SPLIT_POINT - SEQ_LEN
+            ax.set_xticks(
+                np.linspace(0, n - 1, n // 10).round(0).astype(int)
+            )
+            lst = []
+            for sec in f.timestamp[axes[-1].get_xticks() + SEQ_LEN]:
+                lst.append(
+                    f"{int(sec // 60):02}:{int(sec) % 60: 02}'{int((sec - int(sec)) * 100):02}")
+            ax.set_xticklabels(lst, rotation=90)
+
+
+        generate_timestamp_ticklabel(axes[-1])
+        fig.tight_layout()
+        fig.show()
+
+    if 1:
+        import async_writer
+        import dataset
+        from PIL import Image, ImageDraw
+        import os
+        from tqdm import tqdm
+
+        with async_writer.AsyncVideoFrameWriter(os.path.expanduser('~/Desktop/out2.mp4'),
+                                                30 / 3) as wr:
+            with dataset.VideoFrameStorage(
+                    dataset.get_video_frame_dump_dir_path(video_name),
+                    mode='r'
+            ) as vf_store:
+                vf_timestamp = vf_store.get_all_of('timestamp')
+                vf_idx, = np.where(np.in1d(vf_timestamp, f.timestamp[SEQ_LEN - 1:TEST_SPLIT_POINT]))
+                for j, i in tqdm(enumerate(vf_idx)):
+                    data = vf_store.get(i)
+                    img = Image.fromarray(data['original'])
+                    draw = ImageDraw.Draw(img)
+                    H = 10
+                    draw.rectangle(xy=(H // 2, H // 2, 400 + H / 2, H * 3 + H // 2),
+                                   fill=(255, 255, 255))
+                    draw.rectangle(xy=(H // 2, H // 2, 200 + H / 2, H * 6 + H // 2),
+                                   fill=(255, 255, 255))
+                    B = int(255 * 0.6)
+                    for k, s in enumerate(['RISE', 'POSITIVE', 'FALL']):
+                        arg = [1, 3, 2][k]
+                        R = 255 if y_pred[j, [1, 3, 2]].argmax() == k and y_pred[
+                            j, arg] > 0.05 else 0
+                        draw.text(xy=(H, H * k + H + H + H), fill=(R, 0, 0), text=s)
+                    draw.text(xy=(H, H), fill=(0, 0, 0),
+                              text=f'note_rnn_rally_detection.py GTX1060 3GB I={i:05} T={data["timestamp"]:6.1f}')
+                    draw.text(xy=(H, H + H), fill=(0, 0, 0),
+                              text='MODEL: SEQ50->[LSTM128->D64Lin->D4Sig]->4CLS[NEG8|2POS2|8NEG]')
+                    draw.rectangle(
+                        xy=(100, H * 0 + H * 3, 100 + y_pred[j, 1] * 100, H + H * 0 + H * 3),
+                        fill=(B, B, 0))
+                    draw.rectangle(
+                        xy=(100, H * 1 + H * 3, 100 + y_pred[j, 3] * 100, H + H * 1 + H * 3),
+                        fill=(0, B, 0))
+                    draw.rectangle(
+                        xy=(100, H * 2 + H * 3, 100 + y_pred[j, 2] * 100, H + H * 2 + H * 3),
+                        fill=(0, 0, B))
+                    # draw.rectangle(xy=(50, H * 3 + H, 50 + y_pred[j, 3] * 100, H + H * 3 + H),
+                    #                fill=(B, 0, 0))
+                    plt.figure()
+                    wr.write(np.array(img))
