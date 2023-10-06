@@ -15,5 +15,11 @@ elif device_name == 'DESKTOP-O6M276J':  # Desktop of yasu.a
     MOTION_DUMP_DIR_PATH = r'H:\idstt\iDSTTVideoFrameDump\motions'
     DEFAULT_VIDEO_NAME = '20230205_04_Narumoto_Harimoto'
     FEATURE_CACHE_PATH = r'H:\idstt\iDSTTVideoFrameDump\cache'
+elif device_name == 'DESKTOP-C4V3D9S':  # Windows tablet of ryutaro
+    VIDEO_DIR_PATH = os.path.expanduser(r'~/Desktop/idsttvideos/singles')
+    FRAME_DUMP_DIR_PATH = r'H:\idstt\iDSTTVideoFrameDump\frames'
+    MOTION_DUMP_DIR_PATH = r'H:\idstt\iDSTTVideoFrameDump\motions'
+    DEFAULT_VIDEO_NAME = '20230205_04_Narumoto_Harimoto'
+    FEATURE_CACHE_PATH = r'H:\idstt\iDSTTVideoFrameDump\cache'
 else:
     assert False, device_name
