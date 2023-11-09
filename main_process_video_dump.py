@@ -3,6 +3,7 @@ import sys
 import threading
 
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
@@ -64,7 +65,8 @@ def iter_results(video_path):
                 break
 
             timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-            bar.set_description(f'{datetime.timedelta(seconds=timestamp)!s} {yield_count:5}')
+            bar.set_description(
+                f'{yield_count:7d} {datetime.timedelta(seconds=timestamp)!s} {yield_count:5}')
 
             if time_end is not None and time_end < timestamp:
                 break
@@ -129,6 +131,7 @@ def iter_results(video_path):
 
     def diff_frames(fr):
         x, y, z = fr['prev_image'], fr['image'], fr['next_image']
+        fr['_d'] = z - x
         image = np.sqrt(np.sqrt(np.square(y - x) * np.square(z - y)))
         return update_image(fr, image=image)
 
@@ -154,6 +157,11 @@ def iter_results(video_path):
 
     # iterate and yield extracted data
     for i, frame in enumerate(it):
+        if i >= 200:
+            plt.imshow(frame['_d'])
+            plt.show()
+            if i == 210:
+                sys.exit(0)
         data_dct = dict(
             original=to_uint8(frame['original']),
             motion=to_uint8(frame['image']),
@@ -167,16 +175,16 @@ def process(video_name, signal: list = None):
     it = iter_results(frame_dump_io.video_path)
     meta = next(it)
     print(meta)
-    with frame_dump_io.get_storage(
-            mode='w',
-            max_entries=meta['n_output']
-    ) as storage:
-        for i, data_dct in it:
-            storage.put(i, data_dct)
-            if signal and signal[0]:
-                print('PROCESS INTERRUPTED')
-                break
-        print('PROCESS COMPLETED')
+    # with frame_dump_io.get_storage(
+    #         mode='w',
+    #         max_entries=meta['n_output']
+    # ) as storage:
+    for i, data_dct in it:
+        # storage.put(i, data_dct)
+        if signal and signal[0]:
+            print('PROCESS INTERRUPTED')
+            break
+    print('PROCESS COMPLETED')
 
 
 def main(video_name):
@@ -201,5 +209,5 @@ if __name__ == '__main__':
         vn = args[0]
     else:
         vn = None
-    assert vn is not None, 'video_name=None is forbidden'
+    # assert vn is not None, 'video_name=None is forbidden'
     main(video_name=vn)
