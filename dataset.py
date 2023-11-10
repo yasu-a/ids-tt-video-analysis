@@ -8,6 +8,13 @@ import numpy as np
 
 import config
 
+_forbid_writing = False
+
+
+def forbid_writing():
+    global _forbid_writing
+    _forbid_writing = True
+
 
 class MemoryMapStorage:
     def generate_config(self):
@@ -22,6 +29,7 @@ class MemoryMapStorage:
 
     def __init__(self, dir_path, mode, max_entries=None):
         if mode == 'w':
+            assert _forbid_writing, 'writing a MemoryMapStorage is forbidden'
             assert max_entries is not None, max_entries
         elif mode == 'r':
             assert max_entries is None, max_entries
