@@ -12,6 +12,8 @@ from util_extrema_feature_motion_detector import ExtremaFeatureMotionDetector
 
 import dataset
 
+dataset.forbid_default_video_name()
+
 
 def process_rect(rect):
     w = rect[1].stop - rect[1].start
@@ -82,11 +84,7 @@ def process(video_name, rect=None, start=None, stop=None):
 
 
 def main(video_name):
-    rect = slice(70, 260), slice(180, 255)  # height, width
-    # height: 奥の選手の頭から手前の選手の足がすっぽり入るように
-    # width: ネットの部分の卓球台の幅に合うように
-
-    process(video_name, rect)
+    process(video_name, rect=None)
 
 
 if __name__ == '__main__':

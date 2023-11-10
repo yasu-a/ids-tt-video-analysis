@@ -8,6 +8,8 @@ import dataset
 import train_input
 from main_process_video_dump import RESIZE_RATIO
 
+dataset.forbid_default_video_name()
+
 
 def main(video_name):
     video_path = dataset.get_video_path(video_name)
