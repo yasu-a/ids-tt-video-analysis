@@ -132,6 +132,7 @@ class MemoryMapStorage:
             shape = getattr(data_dct[name], 'shape', None) or tuple()
             a = self.__get_array(name, shape=shape)
             a[i, ...] = data_dct[name]
+            a.flush()
         self.mark_finished(i)
 
     def get(self, i):  # FIXME: __status__ filtering
