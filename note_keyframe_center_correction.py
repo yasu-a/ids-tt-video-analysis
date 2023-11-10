@@ -42,7 +42,6 @@ result = detector.compute(
 
 import skimage.feature
 
-
 # def correct_motion_center(src_original, dst_original):
 #     tp = skimage.feature.match_template(
 #         dst_original,
