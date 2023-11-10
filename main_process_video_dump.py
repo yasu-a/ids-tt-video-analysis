@@ -8,6 +8,8 @@ from tqdm import tqdm
 
 import dataset
 
+dataset.forbid_default_video_name()
+
 SPECIFIED_FPS = 29.97
 
 RESIZE_RATIO = 0.3
