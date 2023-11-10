@@ -85,6 +85,9 @@ Key-frame distance matrix
 ![img](presen_materials/motion_centroid_correction/out_without_motion_correction.gif)
 
 ## Correction Enabled
+手前の選手の頭に注目
+
+Disabledではベクトルが暴れているがenabledでは暴れが抑えられている
 
 ![img](presen_materials/motion_centroid_correction/out_with_motion_correction.gif)
 
@@ -93,8 +96,6 @@ Key-frame distance matrix
 ![img](presen_materials/motion_centroid_correction/out_without_motion_correction.png)
 
 ## Correction Enabled
-手前の選手の頭に注目
-Disabledではベクトルが暴れているがenabledでは暴れが抑えられている
 
 ![img](presen_materials/motion_centroid_correction/out_with_motion_correction.png)
 
