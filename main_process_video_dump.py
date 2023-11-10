@@ -206,7 +206,7 @@ if __name__ == '__main__':
     hr = False
     if args:
         vn = args.pop(0)
-        if vn and vn[0] == '-h':
+        if args and args[0] == '-h':
             hr = True
             args.pop(0)
         if args:
