@@ -31,13 +31,26 @@ Tチーム動画分析のリポジトリです。
 # スクリプトの実行
 
 1. この階層に`config.py`という名前のファイルを作る
-2. 以下の定数を書き込む
+2. 以下の`if`（もしくは`elif`）ブロックを作る（作らなくても可）
+ - ＜デバイス名＞は`DESKTOP-O1A234B`のようなパソコンの名前
+
+```python
+import os
+import platform
+
+device_name = platform.node()
+
+if device_name == '＜デバイス名＞':
+  pass
+```
+
+3. 以下の定数を定義して設定する
 
 |     VARIABLE NAME      |                                   DESCRIPTION                                    |                        EXAMPLE                         |
 |:----------------------:|:--------------------------------------------------------------------------------:|:------------------------------------------------------:|
 |    `VIDEO_DIR_PATH`    |               Path to the directory containing the original video                | `os.path.expanduser(r'~/Desktop/idsttvideos/singles')` |
-| `FRAME_DUMP_DIR_PATH`  |  Dump destination of [main_process_video_dump.py](./main_process_video_dump.py)  |        `r'H:\idstt\iDSTTVideoFrameDump\frames'`        |
-| `MOTION_DUMP_DIR_PATH` | Dump destination of [main_process_motion_dump.py](./main_process_motion_dump.py) |       `r'H:\idstt\iDSTTVideoFrameDump\motions'`        |
+| `FRAME_DUMP_DIR_PATH`  |  Dump destination of [main_process_video_dump.py](./main_process_video_dump.py)  |        `r'C:\idstt\iDSTTVideoFrameDump\frames'`        |
+| `MOTION_DUMP_DIR_PATH` | Dump destination of [main_process_motion_dump.py](./main_process_motion_dump.py) |       `r'C:\idstt\iDSTTVideoFrameDump\motions'`        |
 |  `DEFAULT_VIDEO_NAME`  |  Default video name to be used in each process when no video names is specified  |           `'20230205_04_Narumoto_Harimoto'`            |
 
 # スクリプトの概要
