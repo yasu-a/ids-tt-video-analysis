@@ -1,6 +1,7 @@
 import json
 import os
 import pickle
+import sys
 import traceback
 import warnings
 
@@ -195,15 +196,13 @@ class MotionStorage(MemoryMapStorage):
 
 
 class FrameDumpIO:
-    def __init__(self, video_name=None):
+    def __init__(self, video_name=None, high_res=False):
         self.__video_name = coerce_video_name(video_name)
+        self.__high_res = high_res
 
     def get_storage(self, mode, max_entries=None):
         return VideoFrameStorage(
-            os.path.join(
-                config.FRAME_DUMP_DIR_PATH,
-                self.__video_name,
-            ),
+            get_video_frame_dump_dir_path(self.__video_name, high_res=self.__high_res),
             mode,
             max_entries=max_entries
         )
@@ -229,10 +228,19 @@ def _print_warning(msg):
     traceback.print_stack()
 
 
+def _print_video_name_candidates():
+    print('video candidates', file=sys.stderr)
+    for name in os.listdir(config.VIDEO_DIR_PATH):
+        video_name, ext = os.path.splitext(name)
+        if ext == '.mp4':
+            print(' *', video_name, file=sys.stderr)
+
+
 def coerce_video_name(video_name):
     if video_name is None:
         video_name = config.DEFAULT_VIDEO_NAME
         if _forbid_default_video_name:
+            _print_video_name_candidates()
             assert False, 'using default video name is forbidden'
         else:
             _print_warning('Default video name used')
@@ -247,10 +255,11 @@ def get_video_path(video_name=None):
     )
 
 
-def get_video_frame_dump_dir_path(video_name=None):
+def get_video_frame_dump_dir_path(video_name=None, high_res=False):
     video_name = coerce_video_name(video_name)
     return os.path.join(
         config.FRAME_DUMP_DIR_PATH,
+        *(['high_res'] if high_res else []),
         video_name,
     )
 

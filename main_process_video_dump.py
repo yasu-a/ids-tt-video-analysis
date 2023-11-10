@@ -12,10 +12,8 @@ dataset.forbid_default_video_name()
 
 SPECIFIED_FPS = 29.97
 
-RESIZE_RATIO = 0.3
 
-
-def iter_results(video_path):
+def iter_results(video_path, resize_ratio):
     # create VideoCapture instance
     cap = cv2.VideoCapture(video_path)
 
@@ -109,7 +107,7 @@ def iter_results(video_path):
 
     @vectorize_image_set
     def pre_process(image):
-        image = cv2.resize(image, None, fx=RESIZE_RATIO, fy=RESIZE_RATIO)
+        image = cv2.resize(image, None, fx=resize_ratio, fy=resize_ratio)
         image = image / 256.0
         assert image.max() < 1.0, image.max()
         return image
@@ -164,9 +162,14 @@ def iter_results(video_path):
         yield i, data_dct
 
 
-def process(video_name, signal: list = None):
-    frame_dump_io = dataset.FrameDumpIO(video_name=video_name)
-    it = iter_results(frame_dump_io.video_path)
+RESIZE_RATIO_LOW = 0.3
+RESIZE_RATIO_HIGH = 0.7
+
+
+def process(video_name, signal: list = None, high_res=False):
+    resize_ratio = RESIZE_RATIO_HIGH if high_res else RESIZE_RATIO_LOW
+    frame_dump_io = dataset.FrameDumpIO(video_name=video_name, high_res=high_res)
+    it = iter_results(frame_dump_io.video_path, resize_ratio)
     meta = next(it)
     print(meta)
     with frame_dump_io.get_storage(
@@ -181,12 +184,13 @@ def process(video_name, signal: list = None):
         print('PROCESS COMPLETED')
 
 
-def main(video_name):
+def main(video_name, high_res=False):
     signal = [False]
 
     th = threading.Thread(
         target=process,
         args=(video_name, signal),
+        kwargs=dict(high_res=high_res),
         name='frame-dump-process'
     )
     th.start()
@@ -199,9 +203,14 @@ def main(video_name):
 
 if __name__ == '__main__':
     _, *args = sys.argv
+    hr = False
     if args:
-        vn = args[0]
+        vn = args.pop(0)
+        if vn and vn[0] == '-h':
+            hr = True
+            args.pop(0)
+        if args:
+            raise ValueError('INVALID COMMAND LINE OPTIONS')
     else:
         vn = None
-    assert vn is not None, 'video_name=None is forbidden'
-    main(video_name=vn)
+    main(video_name=vn, high_res=hr)
