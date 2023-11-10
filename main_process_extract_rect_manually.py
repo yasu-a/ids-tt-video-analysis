@@ -6,7 +6,7 @@ import numpy as np
 
 import dataset
 import train_input
-from main_process_video_dump import RESIZE_RATIO
+from main_process_video_dump import RESIZE_RATIO_LOW
 
 dataset.forbid_default_video_name()
 
@@ -37,10 +37,10 @@ def main(video_name):
             iw, ih, left, right, top, bottom \
                 = vals['iw'], vals['ih'], vals['left'], vals['right'], vals['top'], vals['bottom']
 
-            top = top / ih * vh * RESIZE_RATIO
-            bottom = bottom / ih * vh * RESIZE_RATIO
-            left = left / iw * vw * RESIZE_RATIO
-            right = right / iw * vw * RESIZE_RATIO
+            top = top / ih * vh * RESIZE_RATIO_LOW
+            bottom = bottom / ih * vh * RESIZE_RATIO_LOW
+            left = left / iw * vw * RESIZE_RATIO_LOW
+            right = right / iw * vw * RESIZE_RATIO_LOW
             arr = np.array([top, bottom, left, right]).round(0).astype(int)
             a, b, c, d = map(int, arr)
             rect = slice(a, b), slice(c, d)
