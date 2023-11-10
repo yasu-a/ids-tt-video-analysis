@@ -29,7 +29,7 @@ class MemoryMapStorage:
 
     def __init__(self, dir_path, mode, max_entries=None):
         if mode == 'w':
-            assert _forbid_writing, 'writing a MemoryMapStorage is forbidden'
+            assert not _forbid_writing, 'writing a MemoryMapStorage is forbidden'
             assert max_entries is not None, max_entries
         elif mode == 'r':
             assert max_entries is None, max_entries
@@ -216,6 +216,14 @@ class FrameDumpIO:
         )
 
 
+_forbid_default_video_name = False
+
+
+def forbid_default_video_name():
+    global _forbid_default_video_name
+    _forbid_default_video_name = True
+
+
 def _print_warning(msg):
     warnings.warn(msg)
     traceback.print_stack()
@@ -224,7 +232,10 @@ def _print_warning(msg):
 def coerce_video_name(video_name):
     if video_name is None:
         video_name = config.DEFAULT_VIDEO_NAME
-        _print_warning('Default video name used')
+        if _forbid_default_video_name:
+            assert False, 'using default video name is forbidden'
+        else:
+            _print_warning('Default video name used')
     return video_name
 
 
