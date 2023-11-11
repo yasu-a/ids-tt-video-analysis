@@ -13,8 +13,11 @@ class PoseDetectorClient:
 
     def detect(self, images: list[np.ndarray]) -> list[PoseDetectionResult]:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect(self.__address)
-        data_pickle = pickle.dumps(images)
-        send_blob(s, data_pickle)
-        data_pickle = recv_blob(s)
+        try:
+            s.connect(self.__address)
+            data_pickle = pickle.dumps(images)
+            send_blob(s, data_pickle)
+            data_pickle = recv_blob(s)
+        finally:
+            s.close()
         return pickle.loads(data_pickle)

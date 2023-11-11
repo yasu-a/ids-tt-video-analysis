@@ -16,30 +16,33 @@ class PoseDetectorSingleProcessServer:
         print(self.__address)
         s.bind(self.__address)
         s.listen(32)
-        while True:
-            connection, client_address = s.accept()
-            print('ESTABLISHED', connection, client_address)
+        try:
+            while True:
+                connection, client_address = s.accept()
+                print('ESTABLISHED', connection, client_address)
 
-            try:
-                data_pickle = recv_blob(connection)
-            except ConnectionError:
-                traceback.print_exc()
-                continue
+                try:
+                    data_pickle = recv_blob(connection)
+                except ConnectionError:
+                    traceback.print_exc()
+                    continue
 
-            print(' received', len(data_pickle) // 1000, 'KBytes')
+                print(' received', len(data_pickle) // 1000, 'KBytes')
 
-            obj = pickle.loads(data_pickle)
-            if isinstance(obj, list):
-                input_images = obj
-            else:
-                input_images = [obj]
-            print(' received', len(input_images), 'images')
+                obj = pickle.loads(data_pickle)
+                if isinstance(obj, list):
+                    input_images = obj
+                else:
+                    input_images = [obj]
+                print(' received', len(input_images), 'images')
 
-            results = [self.__detector.detect(image) for image in input_images]
+                results = [self.__detector.detect(image) for image in input_images]
 
-            data_pickle = pickle.dumps(results)
-            send_blob(connection, data_pickle)
-            connection.close()
+                data_pickle = pickle.dumps(results)
+                send_blob(connection, data_pickle)
+                connection.close()
+        finally:
+            s.close()
 
 
 class PoseDetectorMultiProcessServer:
