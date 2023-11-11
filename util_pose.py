@@ -64,6 +64,7 @@ class MoveNetPoseDetector(PoseDetector):
         return detection_result
 
 
+# FIXME: NOT WORKING!
 class PoseDetectorProcess:
     def __init__(self, *, detector: PoseDetector, process_index=None, max_q_size):
         self.__detector = detector

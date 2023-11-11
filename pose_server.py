@@ -1,11 +1,48 @@
 import pickle
 import socket
+import traceback
 
 from pose_common import *
 from util_pose import *
 
 
-class PoseDetectorServer:
+class PoseDetectorSingleProcessServer:
+    def __init__(self, *, host='localhost', port, detector_class: type[PoseDetector]):
+        self.__address = host, port
+        self.__detector = detector_class()
+
+    def serve_forever(self):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        print(self.__address)
+        s.bind(self.__address)
+        s.listen(32)
+        while True:
+            connection, client_address = s.accept()
+            print('ESTABLISHED', connection, client_address)
+
+            try:
+                data_pickle = recv_blob(connection)
+            except ConnectionError:
+                traceback.print_exc()
+                continue
+
+            print(' received', len(data_pickle) // 1000, 'KBytes')
+
+            obj = pickle.loads(data_pickle)
+            if isinstance(obj, list):
+                input_images = obj
+            else:
+                input_images = [obj]
+            print(' received', len(input_images), 'images')
+
+            results = [self.__detector.detect(image) for image in input_images]
+
+            data_pickle = pickle.dumps(results)
+            send_blob(connection, data_pickle)
+            connection.close()
+
+
+class PoseDetectorMultiProcessServer:
     def __init__(self, *, host='localhost', port, detector_class: type[PoseDetector],
                  n_unused_cpus=1):
         self.__address = host, port

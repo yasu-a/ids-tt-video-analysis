@@ -15,6 +15,6 @@ class PoseDetectorClient:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect(self.__address)
         data_pickle = pickle.dumps(images)
-        s.sendall(data_pickle)
-        data_pickle = _socket_receive_all(s)
+        send_blob(s, data_pickle)
+        data_pickle = recv_blob(s)
         return pickle.loads(data_pickle)

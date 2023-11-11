@@ -8,6 +8,7 @@ import pose_client
 dataset.forbid_writing()
 
 KEYPOINT_THRESHOLD = 0.2
+POSE_SERVER_PORT = 13579
 
 
 def main():
@@ -15,18 +16,24 @@ def main():
             dataset.get_video_frame_dump_dir_path(video_name=None, high_res=False),
             mode='r',
     ) as vf_store:
-        frames = []
-        for i in tqdm(range(vf_store.count())):
-            if len(frames) < 32:
-                frame_data = vf_store.get(i)
-                frame = frame_data['original']
-                frames.append(frame)
-            else:
-                client = pose_client.PoseDetectorClient(port=13579)
-                results = client.detect(frames)
-                frames.clear()
-                for r in results:
-                    pprint(r)
+        def iter_batches():
+            it = iter(tqdm(range(vf_store.count())))
+            while True:
+                data_batch = []
+                for _ in range(16):
+                    i = next(it)
+                    fr = vf_store.get(i)
+                    data_batch.append(fr)
+                if not data_batch:
+                    break
+                yield data_batch
+
+        for data_batch in iter_batches():
+            frames = [dct['original'] for dct in data_batch]
+            timestamps = [dct['timestamp'] for dct in data_batch]
+            client = pose_client.PoseDetectorClient(port=POSE_SERVER_PORT)
+            results = client.detect(frames)
+            pprint([results, len(results)])
 
 
 # def main():

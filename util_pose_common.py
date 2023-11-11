@@ -13,7 +13,7 @@ class Body(NamedTuple):
 
     @property
     def n_parts(self):
-        return len(self.part_bboxes)
+        return len(self.bbox)
 
 
 class PoseDetectionResult(NamedTuple):
