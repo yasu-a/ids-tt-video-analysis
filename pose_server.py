@@ -25,6 +25,7 @@ class PoseDetectorSingleProcessServer:
                     data_pickle = recv_blob(connection)
                 except ConnectionError:
                     traceback.print_exc()
+                    connection.close()
                     continue
 
                 print(' received', len(data_pickle) // 1000, 'KBytes')
@@ -39,7 +40,13 @@ class PoseDetectorSingleProcessServer:
                 results = [self.__detector.detect(image) for image in input_images]
 
                 data_pickle = pickle.dumps(results)
-                send_blob(connection, data_pickle)
+                try:
+                    send_blob(connection, data_pickle)
+                except ConnectionError:
+                    traceback.print_exc()
+                    connection.close()
+                    continue
+
                 connection.close()
         finally:
             s.close()
