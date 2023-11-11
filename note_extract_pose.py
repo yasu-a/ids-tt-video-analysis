@@ -1,5 +1,3 @@
-from pprint import pprint
-
 from tqdm import tqdm
 
 import dataset
@@ -20,7 +18,7 @@ def main():
             it = iter(tqdm(range(vf_store.count())))
             while True:
                 data_batch = []
-                for _ in range(16):
+                for _ in range(8):
                     i = next(it)
                     fr = vf_store.get(i)
                     data_batch.append(fr)
@@ -33,7 +31,7 @@ def main():
             timestamps = [dct['timestamp'] for dct in data_batch]
             client = pose_client.PoseDetectorClient(port=POSE_SERVER_PORT)
             results = client.detect(frames)
-            pprint([results, len(results)])
+            # pprint([results, len(results)])
 
 
 # def main():
