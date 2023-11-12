@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 
-from util_pose_common import *
+from .common import *
 
 
 class PoseDetectorUtilsMixin:

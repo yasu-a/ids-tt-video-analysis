@@ -3,8 +3,8 @@ import socket
 
 import numpy as np
 
-from pose_common import *
-from util_pose_common import *
+from .common import *
+from .socket_common import *
 
 
 class PoseDetectorClient:

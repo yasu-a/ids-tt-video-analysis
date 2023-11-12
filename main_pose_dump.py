@@ -1,7 +1,7 @@
 from tqdm import tqdm
 
 import dataset
-import pose_client
+import pose
 
 dataset.forbid_writing()
 
@@ -29,7 +29,7 @@ def main():
         for data_batch in iter_batches():
             frames = [dct['original'] for dct in data_batch]
             timestamps = [dct['timestamp'] for dct in data_batch]
-            client = pose_client.PoseDetectorClient(port=POSE_SERVER_PORT)
+            client = pose.PoseDetectorClient(port=POSE_SERVER_PORT)
             results = client.detect(frames)
             # pprint([results, len(results)])
 
