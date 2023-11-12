@@ -6,8 +6,6 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
-import dataset
-
 dataset.forbid_default_video_name()
 
 SPECIFIED_FPS = 29.97
@@ -25,7 +23,7 @@ def iter_results(video_path, resize_ratio):
     # process config
     STEP = 5
 
-    # output frame index and characteristic
+    # output frame index and role
     def flag_it():
         pattern = np.zeros(STEP, dtype=int)
         pattern[:3] = [1, 2, 3]

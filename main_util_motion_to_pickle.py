@@ -1,18 +1,14 @@
 import pickle
-import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
 
 np.set_printoptions(suppress=True)
 
 import train_input
 
-import dataset
-
 from tqdm import tqdm
 
-with dataset.VideoFrameStorage(
+with dataset.VideoBaseFrameStorage(
         dataset.get_video_frame_dump_dir_path(),
         mode='r'
 ) as vf_storage:

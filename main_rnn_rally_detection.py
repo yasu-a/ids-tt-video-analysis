@@ -162,14 +162,13 @@ if __name__ == '__main__':
 
     if 0:
         import async_writer
-        import dataset
         from PIL import Image, ImageDraw
         import os
         from tqdm import tqdm
 
         with async_writer.AsyncVideoFrameWriter(os.path.expanduser('~/Desktop/out2.mp4'),
                                                 30 / 3) as wr:
-            with dataset.VideoFrameStorage(
+            with dataset.VideoBaseFrameStorage(
                     dataset.get_video_frame_dump_dir_path(video_name),
                     mode='r'
             ) as vf_store:

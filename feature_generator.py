@@ -6,7 +6,6 @@ from functools import cached_property
 import numpy as np
 from tqdm import tqdm
 
-import dataset
 import train_input
 
 
@@ -26,8 +25,8 @@ class FeatureGenerator:
         return self.__video_name
 
     @contextlib.contextmanager
-    def __frame_store(self) -> dataset.VideoFrameStorage:
-        with dataset.VideoFrameStorage(
+    def __frame_store(self) -> dataset.VideoBaseFrameStorage:
+        with dataset.VideoBaseFrameStorage(
                 dataset.get_video_frame_dump_dir_path(video_name=self.__video_name),
                 mode='r',
         ) as vf_store:

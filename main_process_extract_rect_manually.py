@@ -4,7 +4,6 @@ import sys
 import cv2
 import numpy as np
 
-import dataset
 import train_input
 from main_process_video_dump import RESIZE_RATIO_LOW
 

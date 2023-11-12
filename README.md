@@ -69,7 +69,7 @@ if device_name == '＜デバイス名＞':
 
 |                             NAME                             |      DESCRIPTION       |
 |:------------------------------------------------------------:|:----------------------:|
-|                  [dataset.py](./dataset.py)                  |    `np.memmap`のI/O     |
+|       [Module storage/npstorage](./storage/npstorage)        |    `np.memmap`のI/O     |
 |  [main_process_video_dump.py](./main_process_video_dump.py)  |  動画からフレームと差分フレームを生成する  |
 | [main_process_motion_dump.py](./main_process_motion_dump.py) | 差分フレームからモーションベクトルを生成する |
 |                       [train](./train)                       |         教師データ          |

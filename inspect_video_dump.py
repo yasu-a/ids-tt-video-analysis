@@ -2,15 +2,13 @@ import sys
 
 import numpy as np
 
-import dataset
-
 np.set_printoptions(suppress=True)
 
 
 def inspect(video_name, start=None, stop=None):
     assert start is None, 'providing start is forbidden'
 
-    with dataset.VideoFrameStorage(
+    with dataset.VideoBaseFrameStorage(
             dataset.get_video_frame_dump_dir_path(video_name),
             mode='r'
     ) as vf_store:

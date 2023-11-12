@@ -5,7 +5,6 @@ np.set_printoptions(suppress=True)
 
 import train_input
 
-import dataset
 from tqdm import tqdm
 
 
@@ -291,7 +290,7 @@ if __name__ == '__main__':
 
         from PIL import Image
 
-        with dataset.VideoFrameStorage(
+        with dataset.VideoBaseFrameStorage(
                 dataset.get_video_frame_dump_dir_path(),
                 mode='r'
         ) as vf_store:

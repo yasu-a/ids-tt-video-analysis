@@ -1,6 +1,5 @@
 from tqdm import tqdm
 
-import dataset
 import pose
 
 dataset.forbid_writing()
@@ -10,7 +9,7 @@ POSE_SERVER_PORT = 13579
 
 
 def main():
-    with dataset.VideoFrameStorage(
+    with dataset.VideoBaseFrameStorage(
             dataset.get_video_frame_dump_dir_path(video_name=None, high_res=False),
             mode='r',
     ) as vf_store:
@@ -31,72 +30,8 @@ def main():
             timestamps = [dct['timestamp'] for dct in data_batch]
             client = pose.PoseDetectorClient(port=POSE_SERVER_PORT)
             results = client.detect(frames)
-            # pprint([results, len(results)])
 
 
-# def main():
-#     # Tensorflow Hubを利用してモデルダウンロード
-#     model = hub.load('https://tfhub.dev/google/movenet/multipose/lightning/1')
-#     model = model.signatures['serving_default']
-#
-#     with dataset.VideoFrameStorage(
-#             dataset.get_video_frame_dump_dir_path(video_name=None, high_res=False),
-#             mode='r',
-#     ) as vf_store:
-#         for i in range(vf_store.count()):
-#             frame_data = vf_store.get(i)
-#             frame = frame_data['original']
-#
-#             # 推論実行
-#             keypoints_list, scores_list, bbox_list = run_inference(model, frame)
-#
-#             # 画像レンダリング
-#             result_image = render(frame, keypoints_list, scores_list, bbox_list)
-#
-#             cv2.namedWindow("image", cv2.WINDOW_FULLSCREEN)
-#             cv2.imshow('image', result_image)
-#             key = cv2.waitKey(1) & 0xFF
-#             # Q押下で終了
-#             if key == ord('q'):
-#                 break
-#
-#
-# def run_inference(model, image):
-#     # 画像の前処理
-#     input_image = cv2.resize(image, dsize=(256, 256))
-#     input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
-#     input_image = np.expand_dims(input_image, 0)
-#     input_image = tf.cast(input_image, dtype=tf.int32)
-#
-#     # 推論実行・結果取得
-#     outputs = model(input_image)
-#     keypoints = np.squeeze(outputs['output_0'].numpy())
-#
-#     image_height, image_width = image.shape[:2]
-#     keypoints_list, scores_list, bbox_list = [], [], []
-#
-#     # 検出した人物ごとにキーポイントのフォーマット処理
-#     for kp in keypoints:
-#         keypoints = []
-#         scores = []
-#         for index in range(17):
-#             kp_x = int(image_width * kp[index * 3 + 1])
-#             kp_y = int(image_height * kp[index * 3 + 0])
-#             score = kp[index * 3 + 2]
-#             keypoints.append([kp_x, kp_y])
-#             scores.append(score)
-#         bbox_ymin = int(image_height * kp[51])
-#         bbox_xmin = int(image_width * kp[52])
-#         bbox_ymax = int(image_height * kp[53])
-#         bbox_xmax = int(image_width * kp[54])
-#         bbox_score = kp[55]
-#
-#         keypoints_list.append(keypoints)
-#         scores_list.append(scores)
-#         bbox_list.append([bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax, bbox_score])
-#
-#     return keypoints_list, scores_list, bbox_list
-#
 #
 # def render(image, keypoints_list, scores_list, bbox_list):
 #     render = image.copy()
