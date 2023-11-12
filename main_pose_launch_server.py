@@ -2,6 +2,10 @@ if __name__ == '__main__':
     from pose.server import PoseDetectorSingleProcessServer
     from pose.detector import MoveNetPoseDetector
 
+    import app_logging
+
+    logger = app_logging.create_logger(__name__)
+
     MULTIPROCESS = False
 
     if MULTIPROCESS:
@@ -17,8 +21,10 @@ if __name__ == '__main__':
         #     print('SHUTTING SERVER DOWN...')
         #     server.shutdown()
     else:
+        logger.info('Main start')
         server = PoseDetectorSingleProcessServer(
             port=13579,
             detector_class=MoveNetPoseDetector,
         )
         server.serve_forever()
+        logger.info('Main end')

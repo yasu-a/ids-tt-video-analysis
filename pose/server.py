@@ -2,6 +2,7 @@ import pickle
 import socket
 import traceback
 
+import app_logging
 from .detector import *
 from .socket_common import *
 
@@ -10,13 +11,17 @@ class PoseDetectorSingleProcessServer:
     def __init__(self, *, host='localhost', port, detector_class: type[PoseDetector]):
         self.__address = host, port
         self.__detector = detector_class()
+        self.logger = app_logging.create_logger(f'{__name__}<{host}:{port}>')
+        self.logger.info('PoseDetectorSingleProcessServer')
 
     def serve_forever(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        print(self.__address)
+        s.settimeout(1)
         s.bind(self.__address)
+        self.logger.info('Server address: %s', self.__address)
         s.listen(32)
         try:
+            self.logger.info('Serving started')
             while True:
                 connection, client_address = s.accept()
                 print('ESTABLISHED', connection, client_address)
@@ -27,15 +32,14 @@ class PoseDetectorSingleProcessServer:
                     traceback.print_exc()
                     connection.close()
                     continue
-
-                print(' received', len(data_pickle) // 1000, 'KBytes')
+                self.logger.info('Received %d KBytes', len(data_pickle) // 1000)
 
                 obj = pickle.loads(data_pickle)
                 if isinstance(obj, list):
                     input_images = obj
                 else:
                     input_images = [obj]
-                print(' received', len(input_images), 'images')
+                self.logger.info('Received %d images', len(input_images))
 
                 results = [self.__detector.detect(image) for image in input_images]
 
@@ -49,7 +53,9 @@ class PoseDetectorSingleProcessServer:
 
                 connection.close()
         finally:
+            self.logger.info('Exiting serve_forever')
             s.close()
+            self.logger.info('serve_forever exit')
 
 
 class PoseDetectorMultiProcessServer:
