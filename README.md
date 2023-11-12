@@ -78,8 +78,8 @@ if device_name == '＜デバイス名＞':
 # Local-Maxによるキーポイント検出とモーション検出
 
 - [util_extrema_feature_motion_detector.py](./util_extrema_feature_motion_detector.py)
-- [note_extrema_key_frame_motion_detection.py](./note_extrema_key_frame_motion_detection.py)
-- [note_local_max_featured_motion_detection_mp4_dump.py](./note_local_max_featured_motion_detection_mp4_dump.py)
+- [note_extrema_key_frame_motion_detection.py](notes/note_extrema_key_frame_motion_detection.py)
+- [note_local_max_featured_motion_detection_mp4_dump.py](notes/note_local_max_featured_motion_detection_mp4_dump.py)
 
 ![img](presen_materials/local_max_feature_motion_vectors.gif)
 
@@ -88,7 +88,7 @@ Key-frame distance matrix
 
 # Motion Centroid Correction
 
-- [note_keyframe_center_correction.py](./note_keyframe_center_correction.py)
+- [note_keyframe_center_correction.py](notes/note_keyframe_center_correction.py)
 
 ![img](presen_materials/motion_centroid_correction/compare.png)
 
