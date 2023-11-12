@@ -23,8 +23,12 @@ class PoseDetectorSingleProcessServer:
         try:
             self.logger.info('Serving started')
             while True:
-                connection, client_address = s.accept()
-                print('ESTABLISHED', connection, client_address)
+                try:
+                    connection, client_address = s.accept()
+                except socket.timeout:
+                    continue
+
+                self.logger.info('Established %s', client_address)
 
                 try:
                     data_pickle = recv_blob(connection)
@@ -52,6 +56,8 @@ class PoseDetectorSingleProcessServer:
                     continue
 
                 connection.close()
+        except KeyboardInterrupt:
+            self.logger.info('Ctrl+C accepted')
         finally:
             self.logger.info('Exiting serve_forever')
             s.close()
