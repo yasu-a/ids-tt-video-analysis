@@ -28,7 +28,7 @@ class WriteModeMetaStorageMixin(MetaStorageImplMixinBase):
     def _meta_commit(self):
         self._logger.debug('_meta_commit: commit \'%s\'', self._meta_path())
         with open(self._meta_path(), 'w') as f:
-            json.dump(self.__meta_object, f)
+            json.dump(self.__meta_object, f, indent=2, sort_keys=True)
 
     def _meta_close(self):
         self._logger.debug('_meta_close')
@@ -48,6 +48,9 @@ class WriteModeArrayStorageMixin(ArrayStorageMixinBase):
 
         self.__arrays = {}  # array_name -> np.memmap
         self.__notified_entry_shape = {}  # array_name -> tuple
+
+    def _array_count(self):
+        return self.__n_entries
 
     def _array_open(self, array_name, shape):
         memmap_path = self._array_path(array_name)
@@ -88,11 +91,16 @@ class WriteModeArrayStorageMixin(ArrayStorageMixinBase):
         init_value = self._array_struct_init_value(array_name)
         if init_value is not None:
             a[...] = init_value
+            self._logger.info(
+                '_array_open: %-20s initialized with init_value=%s',
+                array_name,
+                init_value
+            )
 
         return a
 
     def _array_setup(self, array_name):
-        self._logger.debug('_array_open: %-20s', array_name)
+        self._logger.debug('_array_setup: %-20s', array_name)
         assert array_name in self.__notified_entry_shape, (array_name, self.__notified_entry_shape)
         entry_shape = self.__notified_entry_shape[array_name]
         shape = (self.__n_entries,) + entry_shape
@@ -164,16 +172,18 @@ class WriteModeNumpyStorageImpl(
 
         specific_shape = shape_meta.get(array_name)
         if specific_shape is None:
-            shape_meta[array_name] = (None,) + entry_shape
+            shape_meta[array_name] = (self._array_count(),) + entry_shape
             self._meta_commit()
             self._array_notify_shape(array_name, entry_shape)
             self._array_notify_shape(self._status_array_name(array_name), ())
         else:
             if specific_shape[1:] != entry_shape:
-                raise ValueError('invalid shape', array_name, entry_shape)
+                raise ValueError('Invalid shape', array_name, entry_shape)
 
     def put_entry(self, i: int, mapping: dict[str, EntryInputType]) -> None:
         for array_name, obj in mapping.items():
+            if array_name not in self._array_struct_array_names():
+                raise ValueError('Invalid array name', array_name)
             self._update_or_validate_entry_shape(array_name, obj)
             self._array_memmap_data(array_name)[i, ...] = obj
             self._array_memmap_status(array_name)[i] = self.STATUS_VALID
