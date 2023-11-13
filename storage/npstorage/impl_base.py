@@ -102,7 +102,7 @@ class ArrayStorageMixinBase(NumpyStoragePrototype):
         return self._struct[array_name]['dtype']
 
     def _array_struct_init_value(self, array_name):
-        return self._struct[array_name].get('init_val')
+        return self._struct[array_name].get('init_value')
 
     def _array_struct_array_names(self):
         return self._struct.keys()
