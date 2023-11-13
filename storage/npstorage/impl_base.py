@@ -73,7 +73,7 @@ class NumpyStorageImplBase(NumpyStoragePrototype):
     def get_entry(self, i: int) -> dict[str, EntryOutputType]:
         raise NotImplementedError()
 
-    def get_array(self, array_name, fill_nan=np.nan):
+    def get_array(self, array_name, fill_nan=np.nan) -> EntryOutputType:
         raise NotImplementedError()
 
     def get_entry_type_name(self) -> str:

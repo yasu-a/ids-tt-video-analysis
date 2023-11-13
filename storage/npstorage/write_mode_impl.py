@@ -193,7 +193,7 @@ class WriteModeNumpyStorageImpl(
     def get_entry(self, i: int) -> dict[str, EntryOutputType]:
         raise ValueError('Operation not supported')
 
-    def get_array(self, array_name, fill_nan=np.nan):
+    def get_array(self, array_name, fill_nan=np.nan) -> EntryOutputType:
         raise ValueError('Operation not supported')
 
     def get_entry_type_name(self) -> str:
