@@ -141,6 +141,8 @@ class WriteModeNumpyStorageImpl(
     NumpyStorageImplBase,
     ABC
 ):
+    _COMMIT_INTERVAL = 256
+
     def __init__(self, **kwargs):
         logger = app_logging.create_logger(__name__)
         super().__init__(logger=logger, **kwargs)
@@ -153,7 +155,7 @@ class WriteModeNumpyStorageImpl(
         self._modcnt_committed()
 
     def _commit_if_possible(self):
-        if self._modcnt_n_left_modification() > 64:
+        if self._modcnt_n_left_modification() > self._COMMIT_INTERVAL:
             self.commit()
 
     def _update_or_validate_entry_shape(self, array_name, entry_obj):
