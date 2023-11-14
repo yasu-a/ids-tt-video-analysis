@@ -54,7 +54,7 @@ Tチーム動画分析のリポジトリです。
 |     VARIABLE NAME      |                                   DESCRIPTION                                    |                        EXAMPLE                         |
 |:----------------------:|:--------------------------------------------------------------------------------:|:------------------------------------------------------:|
 |    `VIDEO_DIR_PATH`    |               Path to the directory containing the original video                | `os.path.expanduser(r'~/Desktop/idsttvideos/singles')` |
-| `FRAME_DUMP_DIR_PATH`  |  Dump destination of [main_process_video_dump.py](./main_process_video_dump.py)  |        `r'C:\idstt\iDSTTVideoFrameDump\frames'`        |
+| `FRAME_DUMP_DIR_PATH`  |    Dump destination of [main_process_video_dump.py](./process_video_dump.py)     |        `r'C:\idstt\iDSTTVideoFrameDump\frames'`        |
 | `MOTION_DUMP_DIR_PATH` | Dump destination of [main_process_motion_dump.py](./main_process_motion_dump.py) |       `r'C:\idstt\iDSTTVideoFrameDump\motions'`        |
 |  `DEFAULT_VIDEO_NAME`  |  Default video name to be used in each process when no video names is specified  |           `'20230205_04_Narumoto_Harimoto'`            |
 
@@ -63,7 +63,7 @@ Tチーム動画分析のリポジトリです。
 |                             NAME                             |      DESCRIPTION       |
 |:------------------------------------------------------------:|:----------------------:|
 |       [Module storage/npstorage](./storage/npstorage)        |    `np.memmap`のI/O     |
-|  [main_process_video_dump.py](./main_process_video_dump.py)  |  動画からフレームと差分フレームを生成する  |
+|    [main_process_video_dump.py](./process_video_dump.py)     |  動画からフレームと差分フレームを生成する  |
 | [main_process_motion_dump.py](./main_process_motion_dump.py) | 差分フレームからモーションベクトルを生成する |
 |                       [train](./train)                       |         教師データ          |
 |              [train_input.py](./train_input.py)              |        教師データI/O        |
