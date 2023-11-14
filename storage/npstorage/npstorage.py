@@ -1,15 +1,19 @@
 from contextlib import contextmanager
-from typing import NamedTuple, Generic, TypeVar
+from typing import NamedTuple, Generic, TypeVar, Iterator, Union
 
-from storage.route import create_data_path
+from storage.routing import StoragePath
 from .impl import *
+from .impl_base import NumpyStorageImplBase
 from .register import _find_storage_context, StorageContext
 
-__all__ = 'NumpyStorage', 'create_instance'
+__all__ = 'NumpyStorage', 'create_instance', 'STATUS_INVALID', 'STATUS_VALID'
 
-NumpyStorageImplType = WriteModeNumpyStorageImpl  # TODO: add read-mode-impl
+NumpyStorageImplType = Union[WriteModeNumpyStorageImpl, ReadModeNumpyStorageImpl]
 
 EntryNamedTupleGeneric = TypeVar('EntryNamedTupleGeneric', bound=NamedTuple)
+
+STATUS_INVALID = NumpyStorageImplBase.STATUS_INVALID
+STATUS_VALID = NumpyStorageImplBase.STATUS_VALID
 
 
 class NumpyStorage(Generic[EntryNamedTupleGeneric]):
@@ -30,15 +34,24 @@ class NumpyStorage(Generic[EntryNamedTupleGeneric]):
     def get_entry(self, i: int) -> dict[str, EntryNamedTupleGeneric]:
         return self.__entry_nt(**self.__impl.get_entry(i))
 
-    def get_array(self, array_name):
+    def get_array(self, array_name) -> EntryOutputType:
         return self.__impl.get_array(array_name)
+
+    def get_status(self, array_name) -> EntryOutputType:
+        return self.__impl.get_status(array_name)
+
+    def get_array_names(self) -> frozenset[str]:
+        return self.__impl.get_array_names()
+
+    def count(self) -> int:
+        return self.__impl.count()
 
     def close(self):
         self.__impl.close()
 
 
 @contextmanager
-def create_instance(entity, context, *, mode, n_entries=None) -> NumpyStorage:
+def create_instance(entity, context, *, mode, n_entries=None) -> Iterator[NumpyStorage]:
     if isinstance(context, str):
         storage_context = _find_storage_context(context)
     elif isinstance(context, StorageContext):
@@ -46,11 +59,11 @@ def create_instance(entity, context, *, mode, n_entries=None) -> NumpyStorage:
     else:
         raise TypeError('Parameter `context` must be a `str` or `StorageContext`')
 
-    path = create_data_path(
+    path = StoragePath(
         domain='numpy_storage',
         entity=entity,
         context=storage_context.name
-    )
+    ).path
 
     if mode == 'w':
         impl = WriteModeNumpyStorageImpl(
@@ -59,7 +72,10 @@ def create_instance(entity, context, *, mode, n_entries=None) -> NumpyStorage:
             struct_definition=storage_context.struct_definition
         )
     elif mode == 'r':
-        raise NotImplementedError()
+        impl = ReadModeNumpyStorageImpl(
+            root_path=path,
+            struct_definition=storage_context.struct_definition
+        )
     else:
         assert False, mode
 
@@ -68,6 +84,7 @@ def create_instance(entity, context, *, mode, n_entries=None) -> NumpyStorage:
         entry_named_tuple=storage_context.entry_named_tuple
     )
 
-    yield ns
-
-    ns.close()
+    try:
+        yield ns
+    finally:
+        ns.close()

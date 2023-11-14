@@ -1,6 +1,11 @@
 from typing import Any, NamedTuple
 
-__all__ = 'StorageContext', 'register_storage_context', '_find_storage_context'
+__all__ = (
+    'StorageContext',
+    'register_storage_context',
+    '_find_storage_context',
+    'list_storage_context'
+)
 
 
 class StorageContext(NamedTuple):
@@ -20,3 +25,7 @@ def register_storage_context(storage_context: StorageContext):
 
 def _find_storage_context(name: str):
     return _registrations[name]
+
+
+def list_storage_context():
+    return list(_registrations.keys())
