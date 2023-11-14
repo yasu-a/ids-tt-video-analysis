@@ -17,10 +17,10 @@ class WriteModeMetaStorageMixin(MetaStorageImplMixinBase):
 
         self.__meta_object = {}
 
-    def _meta_open(self):
-        self._logger.debug('_meta_open: open \'%s\'', self._meta_path())
-        with open(self._meta_path(), 'r') as f:
-            self.__meta_object = json.load(f)
+    # def _meta_open(self):
+    #     self._logger.debug('_meta_open: open \'%s\'', self._meta_path())
+    #     with open(self._meta_path(), 'r') as f:
+    #         self.__meta_object = json.load(f)
 
     def _meta_get_object(self) -> dict:
         return self.__meta_object
@@ -173,6 +173,7 @@ class WriteModeNumpyStorageImpl(
         specific_shape = shape_meta.get(array_name)
         if specific_shape is None:
             shape_meta[array_name] = (self._array_count(),) + entry_shape
+            shape_meta[self._status_array_name(array_name)] = (self._array_count(),)
             self._meta_commit()
             self._array_notify_shape(array_name, entry_shape)
             self._array_notify_shape(self._status_array_name(array_name), ())
