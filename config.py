@@ -8,6 +8,12 @@ _device_name = platform.node()
 
 
 class Config:
+    _debug = False
+
+    @classmethod
+    def enable_debug_mode(cls):
+        cls._debug = True
+
     def __init__(self, json_path):
         with open(json_path, 'r') as f:
             self.__data = json.load(f)
@@ -18,7 +24,10 @@ class Config:
 
     @property
     def data_location(self):
-        return self['data-location']
+        if self._debug:
+            return self['debug-data-location']
+        else:
+            return self['data-location']
 
     @property
     def video_location(self):

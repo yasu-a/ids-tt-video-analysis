@@ -3,6 +3,7 @@
     "DESKTOP-O6M276J": {
       ".comment": "Desktop PC of yasu.a",
       "data-location": "H:/idstt/video_analysis",
+      "debug-data-location": "H:/idstt/video_analysis/__debug__",
       "video-location": "H:/idsttvideos/singles",
       "default-video-name": "20230205_04_Narumoto_Harimoto"
     },
