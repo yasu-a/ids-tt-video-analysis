@@ -47,10 +47,13 @@ class NumpyStorageImplBase(NumpyStoragePrototype):
                 (struct_definition, array_name)
             assert all(k in {'dtype', 'init_value'} for k in definition.keys()), \
                 (struct_definition, array_name)
-            structure[array_name] = definition
+            structure[array_name] = definition | dict(
+                status=False
+            )
             structure[cls._status_array_name(array_name)] = dict(
                 dtype=np.uint8,
-                init_value=cls.STATUS_INVALID
+                init_value=cls.STATUS_INVALID,
+                status=True
             )
         return structure
 
@@ -74,6 +77,12 @@ class NumpyStorageImplBase(NumpyStoragePrototype):
         raise NotImplementedError()
 
     def get_array(self, array_name, fill_nan=np.nan) -> EntryOutputType:
+        raise NotImplementedError()
+
+    def get_status(self, array_name) -> EntryOutputType:
+        raise NotImplementedError()
+
+    def get_array_names(self) -> frozenset[str]:
         raise NotImplementedError()
 
     def count(self) -> int:
@@ -106,7 +115,11 @@ class ArrayStorageMixinBase(NumpyStoragePrototype):
 
     @functools.cache
     def _array_struct_array_names(self):
-        return frozenset(self._struct.keys())
+        return frozenset(
+            array_name
+            for array_name, struct_info in self._struct.items()
+            if not struct_info['status']
+        )
 
 
 # TODO: make mixin a class and apply it for meta-storages and array-storages

@@ -196,6 +196,12 @@ class WriteModeNumpyStorageImpl(
     def get_array(self, array_name, fill_nan=np.nan) -> EntryOutputType:
         raise ValueError('Operation not supported')
 
+    def get_status(self, array_name) -> EntryOutputType:
+        raise ValueError('Operation not supported')
+
+    def get_array_names(self) -> frozenset[str]:
+        return self._array_struct_array_names()
+
     def count(self) -> int:
         return self._array_count()
 
