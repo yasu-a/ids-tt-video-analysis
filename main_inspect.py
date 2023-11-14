@@ -4,13 +4,12 @@ import sys
 
 import numpy as np
 
+import app_logging
 import npstorage_context
 import storage
 import storage.npstorage as snp
 
 npstorage_context.just_run_registration()
-
-import app_logging
 
 app_logging.set_log_level(app_logging.WARN)
 
@@ -122,6 +121,7 @@ class OperationContext(OperationBase):
             for i in index:
                 print(f'[Index] {i}')
                 entry = st.get_entry(i)
+                # noinspection PyProtectedMember
                 for name, value in entry._asdict().items():
                     if args.key and name not in args.key:
                         continue
@@ -170,14 +170,15 @@ class OperationContext(OperationBase):
             for i in range(st.count()):
                 row_status = np.array([status[name][i] for name in st.get_array_names()])
                 consistent = np.all(np.diff(row_status) == 0)
-                if not consistent:
-                    print(f' [Index] {i}')
-                    for name, value in st.get_entry(i)._asdict().items():
-                        if value is None:
-                            print(f'  [Array] {name:<20s} NULL')
-                        else:
-                            print(
-                                f'  [Array] {name:<20s} {value.shape} / {value.size} / {value.dtype}')
+                if consistent:
+                    continue
+                print(f'Inconsistency [Index] {i}')
+                # noinspection PyProtectedMember
+                for name, value in st.get_entry(i)._asdict().items():
+                    if value is None:
+                        print(f'  [Array] {name:<20s} NULL')
+                    else:
+                        print(f'  [Array] {name:<20s} {value.shape} / {value.size} / {value.dtype}')
 
 
 def run(cl: list[str]):

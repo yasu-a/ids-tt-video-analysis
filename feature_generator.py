@@ -56,9 +56,9 @@ class FeatureGenerator:
                 yield s.get(i)['motion'][rect]
 
     def __iter_motion_vector(self):
-        with self.__motion_store() as s:
-            start = s.get_all_of('start')
-            end = s.get_all_of('end')
+        with self.__motion_store() as ms:
+            start = ms.get_all_of('start')
+            end = ms.get_all_of('end')
             for s, e in zip(start, end):
                 yield s, e
 

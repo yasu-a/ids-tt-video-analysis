@@ -1,11 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
-np.set_printoptions(suppress=True)
+from tqdm import tqdm
 
 import train_input
 
-from tqdm import tqdm
+np.set_printoptions(suppress=True)
 
 
 def split_vertically(n_split, offset, height, points):
@@ -98,7 +97,7 @@ if __name__ == '__main__':
         PLOT_FIGURE = False
         if PLOT_FIGURE:
             def plot_figure():
-                fig, axes = plt.subplots(N_SPLIT + 1, 1, figsize=(200, 10), sharex=True)
+                fig, axes = plt.subplots(N_SPLIT + 1, 1, figsize=(200, 10), sharex='all')
                 axes[0].imshow(np.tile(rally_mask[:, None], 30).T)
                 for i in range(N_SPLIT):
                     axes[i + 1].plot(features['mean'][i], label='mean', alpha=0.7)
@@ -199,7 +198,7 @@ if __name__ == '__main__':
         Y_DATA_MARGIN = 10
 
 
-        def create_y_data():
+        def create_y_data() -> np.ndarray:
             assert rm.ndim == 1, rm.shape
             index_delta = np.arange(rm.size)[:, None] - index_rally_begin
             nearest_rally_begin_index = index_rally_begin[np.abs(index_delta).argmin(axis=1)]
@@ -267,7 +266,7 @@ if __name__ == '__main__':
         print(y_pred)
 
         print(rally_mask.shape, y_pred.shape)
-        fig, axes = plt.subplots(2, 1, figsize=(100, 3), sharex=True)
+        fig, axes = plt.subplots(2, 1, figsize=(100, 3), sharex='all')
         axes[0].imshow(np.tile(rally_mask[:, None], 30).T)
         axes[1].imshow(np.tile(y_pred[:, None], 30).T)
 

@@ -3,9 +3,8 @@ import functools
 import numpy as np
 import scipy.ndimage
 import skimage.feature
-from sklearn.metrics.pairwise import cosine_similarity
-
 from legacy import util
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 class ExtremaFeatureMotionDetector:
@@ -221,7 +220,8 @@ class ExtremaFeatureMotionDetector:
 
                     images[i] = fr
 
-                tp = skimage.feature.match_template(
+                # noinspection PyTypeChecker
+                tp: np.ndarray = skimage.feature.match_template(
                     images[1],
                     images[0],
                     pad_input=True,
@@ -235,7 +235,7 @@ class ExtremaFeatureMotionDetector:
                 r = int(tp.shape[0] * 0.5) // 2
                 tp[x * x + y * y > r * r] = 0
 
-                mask_max = tp == tp.max()
+                mask_max = tp == tp.max(initial=None)
                 if np.count_nonzero(mask_max) == 1:
                     xs, ys, _ = np.where(mask_max)
                     match = np.array([xs[0], ys[0]])
@@ -360,93 +360,92 @@ class ExtremaFeatureMotionDetector:
 
         return ComputationResult(matches, dict(valid=True))
 
+# def main():
+#     from legacy.util import motions, originals
+#
+#     i = 193
+#     motion_images = motions[i], motions[i + 1]
+#     original_images = originals[i], originals[i + 1]
+#
+#     rect = slice(70, 260), slice(180, 255)  # height, width
+#     # height: 奥の選手の頭から手前の選手の足がすっぽり入るように
+#     # width: ネットの部分の卓球台の幅に合うように
+#
+#     w = rect[1].stop - rect[1].start
+#     aw = int(w * 1.0)
+#     rect = slice(rect[0].start, rect[0].stop), slice(rect[1].start - aw, rect[1].stop + aw)
+#
+#     detector = ExtremaFeatureMotionDetector(
+#         detection_region_rect=rect
+#     )
+#
+#     result = detector.compute(original_images, motion_images)
+#
+#     import matplotlib.pyplot as plt
+#
+#     fig = plt.figure()
+#
+#     import matplotlib.animation as animation
+#
+#     def animate(i):
+#         ax = fig.gca()
+#         ax.cla()
+#
+#         for s, d in zip(result.a.global_motion_center, result.b.global_motion_center):
+#             ax.arrow(
+#                 s[1],
+#                 s[0],
+#                 d[1] - s[1],
+#                 d[0] - s[0],
+#                 color='red',
+#                 width=1
+#             )
+#         ax.imshow(motion_images[i])
+#
+#     ani = animation.FuncAnimation(fig, animate, interval=500, frames=2, blit=False, save_count=50)
+#
+#     ani.save('anim.gif')
+#
+#     from tqdm import tqdm
+#
+#     matches_tuple = [tuple(x) for x in zip(result.a.match_index, result.b.match_index)]
+#     n_keys_a = result.matches.keys['count_a']
+#     n_keys_b = result.matches.keys['count_b']
+#     fig, axes = plt.subplots(n_keys_a + 2, n_keys_b + 2, figsize=(40, 40))
+#
+#     for i in tqdm(range(n_keys_a)):
+#         for j in range(n_keys_b):
+#             axes[i + 2, j + 2].bar([0], [result.matches.dist_mat[i, j]])
+#             axes[i + 2, j + 2].set_ylim(0, 1)
+#             if (i, j) in matches_tuple:
+#                 axes[i + 2, j + 2].scatter([0], [0.5], color='red', s=500)
+#
+#     for i in range(n_keys_a):
+#         axes[i + 2, 0].imshow(original_images[0])
+#         axes[i + 2, 0].scatter(
+#             result.matches.keys['global_center_a'][i, 1],
+#             result.matches.keys['global_center_a'][i, 0],
+#             color='yellow',
+#             marker='x',
+#             s=200
+#         )
+#         axes[i + 2, 1].imshow(result.matches.keys['frame_a'][i])
+#     for i in range(n_keys_b):
+#         axes[0, i + 2].imshow(original_images[0])
+#         axes[0, i + 2].scatter(
+#             result.matches.keys['global_center_b'][i, 1],
+#             result.matches.keys['global_center_b'][i, 0],
+#             color='yellow',
+#             marker='x',
+#             s=200
+#         )
+#         axes[1, i + 2].imshow(result.matches.keys['frame_b'][i])
+#     for ax in axes.flatten():
+#         ax.axis('off')
+#     fig.tight_layout()
+#     fig.savefig('local_max_feature_dist_mat.jpg')
+#     fig.show()
 
-def main():
-    from legacy.util import motions, originals
 
-    i = 193
-    motion_images = motions[i], motions[i + 1]
-    original_images = originals[i], originals[i + 1]
-
-    rect = slice(70, 260), slice(180, 255)  # height, width
-    # height: 奥の選手の頭から手前の選手の足がすっぽり入るように
-    # width: ネットの部分の卓球台の幅に合うように
-
-    w = rect[1].stop - rect[1].start
-    aw = int(w * 1.0)
-    rect = slice(rect[0].start, rect[0].stop), slice(rect[1].start - aw, rect[1].stop + aw)
-
-    detector = ExtremaFeatureMotionDetector(
-        detection_region_rect=rect
-    )
-
-    result = detector.compute(original_images, motion_images)
-
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure()
-
-    import matplotlib.animation as animation
-
-    def animate(i):
-        ax = fig.gca()
-        ax.cla()
-
-        for s, d in zip(result.a.global_motion_center, result.b.global_motion_center):
-            ax.arrow(
-                s[1],
-                s[0],
-                d[1] - s[1],
-                d[0] - s[0],
-                color='red',
-                width=1
-            )
-        ax.imshow(motion_images[i])
-
-    ani = animation.FuncAnimation(fig, animate, interval=500, frames=2, blit=False, save_count=50)
-
-    ani.save('anim.gif')
-
-    from tqdm import tqdm
-
-    matches_tuple = [tuple(x) for x in zip(result.a.match_index, result.b.match_index)]
-    n_keys_a = result.matches.keys['count_a']
-    n_keys_b = result.matches.keys['count_b']
-    fig, axes = plt.subplots(n_keys_a + 2, n_keys_b + 2, figsize=(40, 40))
-
-    for i in tqdm(range(n_keys_a)):
-        for j in range(n_keys_b):
-            axes[i + 2, j + 2].bar([0], [result.matches.dist_mat[i, j]])
-            axes[i + 2, j + 2].set_ylim(0, 1)
-            if (i, j) in matches_tuple:
-                axes[i + 2, j + 2].scatter([0], [0.5], color='red', s=500)
-
-    for i in range(n_keys_a):
-        axes[i + 2, 0].imshow(original_images[0])
-        axes[i + 2, 0].scatter(
-            result.matches.keys['global_center_a'][i, 1],
-            result.matches.keys['global_center_a'][i, 0],
-            color='yellow',
-            marker='x',
-            s=200
-        )
-        axes[i + 2, 1].imshow(result.matches.keys['frame_a'][i])
-    for i in range(n_keys_b):
-        axes[0, i + 2].imshow(original_images[0])
-        axes[0, i + 2].scatter(
-            result.matches.keys['global_center_b'][i, 1],
-            result.matches.keys['global_center_b'][i, 0],
-            color='yellow',
-            marker='x',
-            s=200
-        )
-        axes[1, i + 2].imshow(result.matches.keys['frame_b'][i])
-    for ax in axes.flatten():
-        ax.axis('off')
-    fig.tight_layout()
-    fig.savefig('local_max_feature_dist_mat.jpg')
-    fig.show()
-
-
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()

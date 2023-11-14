@@ -1,15 +1,12 @@
 import sys
 
 import numpy as np
-
-import train_input
-
-np.set_printoptions(suppress=True)
-
 from tqdm import tqdm
 
+import train_input
 from util_extrema_feature_motion_detector import ExtremaFeatureMotionDetector
 
+np.set_printoptions(suppress=True)
 dataset.forbid_default_video_name()
 
 

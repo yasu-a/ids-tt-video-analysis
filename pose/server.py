@@ -64,6 +64,7 @@ class PoseDetectorSingleProcessServer:
             self.logger.info('serve_forever exit')
 
 
+# noinspection PyUnusedLocal
 class PoseDetectorMultiProcessServer:
     def __init__(self, *, host='localhost', port, detector_class: type[PoseDetector],
                  n_unused_cpus=1):

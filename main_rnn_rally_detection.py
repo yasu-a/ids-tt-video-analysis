@@ -1,11 +1,9 @@
 import matplotlib.pyplot as plt
-
 import numpy as np
-
-np.set_printoptions(suppress=True)
 
 from feature_generator import FeatureGenerator
 
+np.set_printoptions(suppress=True)
 Y_DATA_MARGIN = 10
 
 
@@ -124,15 +122,15 @@ if __name__ == '__main__':
     y_pred = model.predict(x_test)
 
     if 1:
-        fig, axes = plt.subplots(4, 1, figsize=(100, 10), sharex=True)
+        fig, axes = plt.subplots(4, 1, figsize=(100, 10), sharex='all')
         axes[0].imshow(np.tile(y_test[:, -1][:, None], 30).T)
         # axes[1].imshow(y_pred.T)
         # axes[1].set_aspect('auto')
         # axes[1].plot(y_pred[:, 0], color='black')
-        axes[1].set_title('green red dup vaule')
+        axes[1].set_title('green red dup value')
         axes[1].plot(np.minimum(y_pred[:, 3], y_pred[:, 1]))
         axes[1].grid()
-        axes[2].set_title('blue red dup vaule')
+        axes[2].set_title('blue red dup value')
         axes[2].plot(np.minimum(y_pred[:, 2], y_pred[:, 1]))
         axes[2].grid()
         axes[3].plot(y_pred[:, 1], color='green', label='rise')  # rise
@@ -189,10 +187,15 @@ if __name__ == '__main__':
                         R = 255 if y_pred[j, [1, 3, 2]].argmax() == k and y_pred[
                             j, arg] > 0.05 else 0
                         draw.text(xy=(H, H * k + H + H + H), fill=(R, 0, 0), text=s)
-                    draw.text(xy=(H, H), fill=(0, 0, 0),
-                              text=f'note_rnn_rally_detection.py GTX1060 3GB I={i:05} T={data["timestamp"]:6.1f}')
-                    draw.text(xy=(H, H + H), fill=(0, 0, 0),
-                              text='MODEL: SEQ50->[LSTM128->D64Lin->D4Sig]->4CLS[NEG8|2POS2|8NEG]')
+                    draw.text(
+                        xy=(H, H), fill=(0, 0, 0),
+                        text=f'note_rnn_rally_detection.py GTX1060 3GB '
+                             f'I={i:05} T={data["timestamp"]:6.1f}'
+                    )
+                    draw.text(
+                        xy=(H, H + H), fill=(0, 0, 0),
+                        text='MODEL: SEQ50->[LSTM128->D64Lin->D4Sig]->4CLS[NEG8|2POS2|8NEG]'
+                    )
                     draw.rectangle(
                         xy=(100, H * 0 + H * 3, 100 + y_pred[j, 1] * 100, H + H * 0 + H * 3),
                         fill=(B, B, 0))

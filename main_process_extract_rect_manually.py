@@ -31,6 +31,7 @@ def main(video_name):
         ).items()
     )
 
+    # noinspection PyUnresolvedReferences
     def generate_rect():
         try:
             iw, ih, left, right, top, bottom \

@@ -1,12 +1,11 @@
 import pickle
 
 import numpy as np
-
-np.set_printoptions(suppress=True)
+from tqdm import tqdm
 
 import train_input
 
-from tqdm import tqdm
+np.set_printoptions(suppress=True)
 
 with dataset.VideoBaseFrameStorage(
         dataset.get_video_frame_dump_dir_path(),
