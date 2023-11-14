@@ -39,8 +39,8 @@ def load_rect(video_name=None):
 
 
 def update_rect(video_name, rect):
-    video_name = dataset.coerce_video_name(video_name)
-    rect_lst = rect[0].start, rect[0].stop, rect[1].start, rect[1].stop
+    # rect_lst = rect[0].start, rect[0].stop, rect[1].start, rect[1].stop
+    rect_lst = [rect[0][0], rect[0][1], rect[1][0], rect[1][1]]
     with open('./train/rect.json', 'r') as f:
         json_root = json.load(f)
     json_root[video_name] = rect_lst
