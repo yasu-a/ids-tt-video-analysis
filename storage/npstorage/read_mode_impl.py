@@ -98,7 +98,7 @@ class ReadModeArrayStorageMixin(ArrayStorageMixinBase):
 
     def _array_close(self):
         for array_name, a in self.__arrays.items():
-            self._logger.debug('_array_close: %-20s', array_name)
+            self._logger.info('_array_close: %-20s', array_name)
             # noinspection PyProtectedMember
             a._mmap.close()
 
