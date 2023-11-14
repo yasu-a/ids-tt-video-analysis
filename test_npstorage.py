@@ -76,7 +76,7 @@ if __name__ == '__main__':
             n_entries=n_output
     ) as snp_video_frame:
         snp_video_frame: snp.NumpyStorage
-        for timestamp, images in iter_frames():
+        for j, (timestamp, images) in enumerate(iter_frames()):
             images = list(images)
 
             # preprocess
@@ -96,9 +96,14 @@ if __name__ == '__main__':
             diff_img_gaussian = cv2.GaussianBlur(diff_img, (3, 3), 1)
             motion = np.clip(diff_img_gaussian * 5, 0.0, 1.0 - 1e-6)
 
+
+            def to_uint8(a):
+                return np.clip((a * 256.0).astype(int), 0, 255).astype(np.uint8)
+
+
             # dump
-            snp_video_frame[i] = snp_context.VideoFrameNumpyStorageEntry(
-                original=original,
-                motion=motion,
+            snp_video_frame[j] = snp_context.SNPEntryVideoFrame(
+                original=to_uint8(original),
+                motion=to_uint8(motion),
                 timestamp=timestamp
             )

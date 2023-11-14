@@ -5,7 +5,7 @@ import numpy as np
 import storage.npstorage as snp
 
 
-class VideoFrameNumpyStorageEntry(NamedTuple):
+class SNPEntryVideoFrame(NamedTuple):
     motion: np.ndarray
     original: np.ndarray
     timestamp: float
@@ -25,12 +25,12 @@ snp.register_storage_context(
                 'dtype': np.float32
             }
         },
-        entry_named_tuple=VideoFrameNumpyStorageEntry
+        entry_named_tuple=SNPEntryVideoFrame
     )
 )
 
 
-class LocalPeakMaxMotionNumpyStorageEntry(NamedTuple):
+class SNPEntryLocalPeakMaxMotion(NamedTuple):
     start: float
     end: float
     frame_index: int
@@ -54,6 +54,10 @@ snp.register_storage_context(
                 'dtype': np.float32
             }
         },
-        entry_named_tuple=LocalPeakMaxMotionNumpyStorageEntry
+        entry_named_tuple=SNPEntryLocalPeakMaxMotion
     )
 )
+
+
+def just_run_registration():
+    pass
