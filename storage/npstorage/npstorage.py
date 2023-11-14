@@ -1,12 +1,11 @@
-from contextlib import contextmanager
-from typing import NamedTuple, Generic, TypeVar, Iterator, Union
+from typing import NamedTuple, Generic, TypeVar, Union
 
 from storage.routing import StoragePath
 from .impl import *
 from .impl_base import NumpyStorageImplBase
 from .register import _find_storage_context, StorageContext
 
-__all__ = 'NumpyStorage', 'create_instance', 'STATUS_INVALID', 'STATUS_VALID'
+__all__ = 'NumpyStorage', '_create_domain_instance', 'STATUS_INVALID', 'STATUS_VALID'
 
 NumpyStorageImplType = Union[WriteModeNumpyStorageImpl, ReadModeNumpyStorageImpl]
 
@@ -17,7 +16,11 @@ STATUS_VALID = NumpyStorageImplBase.STATUS_VALID
 
 
 class NumpyStorage(Generic[EntryNamedTupleGeneric]):
-    def __init__(self, impl: NumpyStorageImplType, entry_named_tuple: type[EntryNamedTupleGeneric]):
+    def __init__(
+            self,
+            impl: NumpyStorageImplType,
+            entry_named_tuple: type[EntryNamedTupleGeneric]
+    ):
         self.__impl = impl
         self.__entry_nt = entry_named_tuple
 
@@ -31,7 +34,7 @@ class NumpyStorage(Generic[EntryNamedTupleGeneric]):
 
         self.put_entry(key, value)
 
-    def get_entry(self, i: int) -> dict[str, EntryNamedTupleGeneric]:
+    def get_entry(self, i: int) -> EntryNamedTupleGeneric:
         return self.__entry_nt(**self.__impl.get_entry(i))
 
     def get_array(self, array_name) -> EntryOutputType:
@@ -50,8 +53,7 @@ class NumpyStorage(Generic[EntryNamedTupleGeneric]):
         self.__impl.close()
 
 
-@contextmanager
-def create_instance(entity, context, *, mode, n_entries=None) -> Iterator[NumpyStorage]:
+def _create_domain_instance(entity, context, *, mode, n_entries=None):
     if isinstance(context, str):
         storage_context = _find_storage_context(context)
     elif isinstance(context, StorageContext):
@@ -79,12 +81,7 @@ def create_instance(entity, context, *, mode, n_entries=None) -> Iterator[NumpyS
     else:
         assert False, mode
 
-    ns = NumpyStorage(
+    return NumpyStorage(
         impl=impl,
         entry_named_tuple=storage_context.entry_named_tuple
     )
-
-    try:
-        yield ns
-    finally:
-        ns.close()

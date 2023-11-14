@@ -111,7 +111,8 @@ class OperationContext(OperationBase):
     def run(self):
         args = self.parse()
 
-        with snp.create_instance(
+        with storage.create_instance(
+                domain='numpy_storage',
                 entity=args.entity,
                 context=args.context,
                 mode='r'
@@ -157,7 +158,8 @@ class OperationContext(OperationBase):
     def run(self):
         args = self.parse()
 
-        with snp.create_instance(
+        with storage.create_instance(
+                domain='numpy_storage',
                 entity=args.entity,
                 context=args.context,
                 mode='r'
@@ -166,7 +168,13 @@ class OperationContext(OperationBase):
             print(f'Count: {st.count()}')
             status = {}
             for name in st.get_array_names():
-                status[name] = st.get_status(name)
+                column_status = st.get_status(name)
+                if np.any(column_status == snp.STATUS_INVALID):
+                    print(
+                        f'Unfilled [Array] {name!r} '
+                        f'{(column_status == snp.STATUS_INVALID).sum()}/{st.count()}'
+                    )
+                status[name] = column_status
             for i in range(st.count()):
                 row_status = np.array([status[name][i] for name in st.get_array_names()])
                 consistent = np.all(np.diff(row_status) == 0)

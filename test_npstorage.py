@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 import app_logging
 import npstorage_context as snp_context
+import storage
 import storage.npstorage as snp
 from config import config
 
@@ -69,13 +70,15 @@ if __name__ == '__main__':
                     stack.clear()
 
 
-    with snp.create_instance(
+    with storage.create_instance(
+            domain='numpy_storage',
             entity=video_name,
             context='frames',
             mode='w',
             n_entries=n_output
     ) as snp_video_frame:
-        snp_video_frame: snp.NumpyStorage
+        assert isinstance(snp_video_frame, snp.NumpyStorage)
+
         for j, (timestamp, images) in enumerate(iter_frames()):
             images = list(images)
 
