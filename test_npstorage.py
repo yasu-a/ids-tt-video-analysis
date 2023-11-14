@@ -84,7 +84,7 @@ if __name__ == '__main__':
                 images[i] = cv2.resize(images[i], None, fx=RESIZE_RATIO, fy=RESIZE_RATIO)
                 images[i] = images[i].astype(np.float32)
                 images[i] /= 256.0
-                assert images[i].max() < 1.0, images.max()
+                assert images[i].max() < 1.0, images[i].max()
 
             # dump original
             _, original, _ = images
