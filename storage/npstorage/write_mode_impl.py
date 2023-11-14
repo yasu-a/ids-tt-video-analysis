@@ -196,6 +196,9 @@ class WriteModeNumpyStorageImpl(
     def get_array(self, array_name, fill_nan=np.nan) -> EntryOutputType:
         raise ValueError('Operation not supported')
 
+    def count(self) -> int:
+        return self._array_count()
+
     def close(self) -> None:
         self._array_close()
         self._meta_close()

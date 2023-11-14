@@ -76,6 +76,9 @@ class NumpyStorageImplBase(NumpyStoragePrototype):
     def get_array(self, array_name, fill_nan=np.nan) -> EntryOutputType:
         raise NotImplementedError()
 
+    def count(self) -> int:
+        raise NotImplementedError()
+
     def close(self) -> None:
         raise NotImplementedError()
 
