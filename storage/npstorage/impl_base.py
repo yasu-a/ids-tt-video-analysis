@@ -104,8 +104,9 @@ class ArrayStorageMixinBase(NumpyStoragePrototype):
     def _array_struct_init_value(self, array_name):
         return self._struct[array_name].get('init_value')
 
+    @functools.cache
     def _array_struct_array_names(self):
-        return self._struct.keys()
+        return frozenset(self._struct.keys())
 
 
 # TODO: make mixin a class and apply it for meta-storages and array-storages
