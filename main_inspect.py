@@ -86,12 +86,13 @@ class OperationContext(OperationBase):
 
 def index_validater(value):
     split = value.split(':')
-    if len(split) == 0:
-        return slice(None, None, None)
-    elif len(split) == 1:
+
+    if len(split) == 1:
         return [int(split[0])]
-    else:
-        return slice(*map(int, split))
+
+    while len(split) < 3:
+        split += ['']
+    return slice(*(None if s == '' else int(s) for s in split))
 
 
 @register_operation_parser(op='content')
