@@ -1,6 +1,8 @@
 # ids-tt-video-analysis
 Tチーム動画分析のリポジトリです。
 
+現在進行中のブランチ：[branch:dev/cli-develop](https://github.com/yasu-a/ids-tt-video-analysis/tree/dev/cli-develop)
+
 # 現時点でのプロセス
 1. 動画からフレームを抽出
  - はじめは`decord`でやっていた
