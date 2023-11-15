@@ -14,7 +14,7 @@ with dataset.VideoBaseFrameStorage(
     timestamp = vf_storage.get_all_of('timestamp')
 
 train_input_df, rally_mask = train_input.load_rally_mask(
-    'labels/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
+    'label_data/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
     timestamp
 )
 

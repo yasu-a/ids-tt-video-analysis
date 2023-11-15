@@ -65,7 +65,7 @@ Tチーム動画分析のリポジトリです。
 |       [Module storage/npstorage](./storage/npstorage)        |    `np.memmap`のI/O     |
 |    [main_process_video_dump.py](./process_video_dump.py)     |  動画からフレームと差分フレームを生成する  |
 | [main_process_motion_dump.py](./main_process_motion_dump.py) | 差分フレームからモーションベクトルを生成する |
-|                      [train](./labels)                       |         教師データ          |
+|                    [train](./label_data)                     |         教師データ          |
 |              [train_input.py](./train_input.py)              |        教師データI/O        |
 
 # Local-Maxによるキーポイント検出とモーション検出
