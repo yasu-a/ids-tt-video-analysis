@@ -87,7 +87,7 @@ if __name__ == '__main__':
         timestamp = np.array(timestamp)
 
         _, rally_mask = train_input.load_rally_mask(
-            './train/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
+            'labels/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
             timestamp
         )
 
