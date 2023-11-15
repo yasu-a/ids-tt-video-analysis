@@ -1,25 +1,20 @@
 import pickle
-import sys
 
-import matplotlib.pyplot as plt
 import numpy as np
-
-np.set_printoptions(suppress=True)
+from tqdm import tqdm
 
 import train_input
 
-import dataset
+np.set_printoptions(suppress=True)
 
-from tqdm import tqdm
-
-with dataset.VideoFrameStorage(
+with dataset.VideoBaseFrameStorage(
         dataset.get_video_frame_dump_dir_path(),
         mode='r'
 ) as vf_storage:
     timestamp = vf_storage.get_all_of('timestamp')
 
 train_input_df, rally_mask = train_input.load_rally_mask(
-    './train/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
+    'label_data/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
     timestamp
 )
 

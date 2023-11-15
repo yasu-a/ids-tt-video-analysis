@@ -8,6 +8,7 @@ MAX_BACKLOG_FRAMES = 128
 
 
 def _worker(q: mp.Queue, params: dict):
+    # noinspection PyTypeChecker
     out = iio.get_writer(
         params['path'],
         format='FFMPEG',

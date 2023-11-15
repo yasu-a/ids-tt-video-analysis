@@ -1,17 +1,12 @@
 import sys
 
 import numpy as np
-
-import train_input
-
-np.set_printoptions(suppress=True)
-
 from tqdm import tqdm
 
+import train_input
 from util_extrema_feature_motion_detector import ExtremaFeatureMotionDetector
 
-import dataset
-
+np.set_printoptions(suppress=True)
 dataset.forbid_default_video_name()
 
 
@@ -30,7 +25,7 @@ def process(video_name, rect=None, start=None, stop=None):
     if rect is None:
         rect = train_input.load_rect(video_name)
 
-    with dataset.VideoFrameStorage(
+    with dataset.VideoBaseFrameStorage(
             dataset.get_video_frame_dump_dir_path(video_name),
             mode='r'
     ) as vf_store:

@@ -1,22 +1,21 @@
+import functools
 import json
 import os
 import pickle
+import sys
 import traceback
 import warnings
+from abc import ABC
+from typing import TypeVar, Any
 
 import numpy as np
 
-import config
+from config import config
 
-_forbid_writing = False
-
-
-def forbid_writing():
-    global _forbid_writing
-    _forbid_writing = True
+from storage.register import _context as _storage_context
 
 
-class MemoryMapStorage:
+class MemoryMappedStorage:
     def generate_config(self):
         return {
             '__status__': {
@@ -29,7 +28,8 @@ class MemoryMapStorage:
 
     def __init__(self, dir_path, mode, max_entries=None):
         if mode == 'w':
-            assert not _forbid_writing, 'writing a MemoryMapStorage is forbidden'
+            assert not _storage_context['_forbid_writing'], \
+                'writing a storage is forbidden'
             assert max_entries is not None, max_entries
         elif mode == 'r':
             assert max_entries is None, max_entries
@@ -131,6 +131,7 @@ class MemoryMapStorage:
             shape = getattr(data_dct[name], 'shape', None) or tuple()
             a = self.__get_array(name, shape=shape)
             a[i, ...] = data_dct[name]
+            a.flush()
         self.mark_finished(i)
 
     def get(self, i):  # FIXME: __status__ filtering
@@ -161,49 +162,14 @@ class MemoryMapStorage:
         return False
 
 
-class VideoFrameStorage(MemoryMapStorage):
-    def generate_config(self):
-        return super().generate_config() | {
-            'motion': {
-                'dtype': np.uint8
-            },
-            'original': {
-                'dtype': np.uint8
-            },
-            'timestamp': {
-                'dtype': np.float32
-            }
-        }
-
-
-class MotionStorage(MemoryMapStorage):
-    def generate_config(self):
-        return super().generate_config() | {
-            'start': {
-                'dtype': np.float32
-            },
-            'end': {
-                'dtype': np.float32
-            },
-            'frame_index': {
-                'dtype': np.int32
-            },
-            'timestamp': {
-                'dtype': np.float32
-            }
-        }
-
-
 class FrameDumpIO:
-    def __init__(self, video_name=None):
+    def __init__(self, video_name=None, high_res=False):
         self.__video_name = coerce_video_name(video_name)
+        self.__high_res = high_res
 
     def get_storage(self, mode, max_entries=None):
-        return VideoFrameStorage(
-            os.path.join(
-                config.FRAME_DUMP_DIR_PATH,
-                self.__video_name,
-            ),
+        return VideoBaseFrameStorage(
+            get_video_frame_dump_dir_path(self.__video_name, high_res=self.__high_res),
             mode,
             max_entries=max_entries
         )
@@ -229,10 +195,19 @@ def _print_warning(msg):
     traceback.print_stack()
 
 
+def _print_video_name_candidates():
+    print('video candidates', file=sys.stderr)
+    for name in os.listdir(config.VIDEO_DIR_PATH):
+        video_name, ext = os.path.splitext(name)
+        if ext == '.mp4':
+            print(' *', video_name, file=sys.stderr)
+
+
 def coerce_video_name(video_name):
     if video_name is None:
         video_name = config.DEFAULT_VIDEO_NAME
         if _forbid_default_video_name:
+            _print_video_name_candidates()
             assert False, 'using default video name is forbidden'
         else:
             _print_warning('Default video name used')
@@ -247,10 +222,11 @@ def get_video_path(video_name=None):
     )
 
 
-def get_video_frame_dump_dir_path(video_name=None):
+def get_video_frame_dump_dir_path(video_name=None, high_res=False):
     video_name = coerce_video_name(video_name)
     return os.path.join(
         config.FRAME_DUMP_DIR_PATH,
+        *(['high_res'] if high_res else []),
         video_name,
     )
 

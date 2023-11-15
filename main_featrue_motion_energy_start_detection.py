@@ -1,12 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
-np.set_printoptions(suppress=True)
+from tqdm import tqdm
 
 import train_input
 
-import dataset
-from tqdm import tqdm
+np.set_printoptions(suppress=True)
 
 
 def split_vertically(n_split, offset, height, points):
@@ -89,7 +87,7 @@ if __name__ == '__main__':
         timestamp = np.array(timestamp)
 
         _, rally_mask = train_input.load_rally_mask(
-            './train/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
+            'label_data/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv',
             timestamp
         )
 
@@ -99,7 +97,7 @@ if __name__ == '__main__':
         PLOT_FIGURE = False
         if PLOT_FIGURE:
             def plot_figure():
-                fig, axes = plt.subplots(N_SPLIT + 1, 1, figsize=(200, 10), sharex=True)
+                fig, axes = plt.subplots(N_SPLIT + 1, 1, figsize=(200, 10), sharex='all')
                 axes[0].imshow(np.tile(rally_mask[:, None], 30).T)
                 for i in range(N_SPLIT):
                     axes[i + 1].plot(features['mean'][i], label='mean', alpha=0.7)
@@ -200,7 +198,7 @@ if __name__ == '__main__':
         Y_DATA_MARGIN = 10
 
 
-        def create_y_data():
+        def create_y_data() -> np.ndarray:
             assert rm.ndim == 1, rm.shape
             index_delta = np.arange(rm.size)[:, None] - index_rally_begin
             nearest_rally_begin_index = index_rally_begin[np.abs(index_delta).argmin(axis=1)]
@@ -268,7 +266,7 @@ if __name__ == '__main__':
         print(y_pred)
 
         print(rally_mask.shape, y_pred.shape)
-        fig, axes = plt.subplots(2, 1, figsize=(100, 3), sharex=True)
+        fig, axes = plt.subplots(2, 1, figsize=(100, 3), sharex='all')
         axes[0].imshow(np.tile(rally_mask[:, None], 30).T)
         axes[1].imshow(np.tile(y_pred[:, None], 30).T)
 
@@ -291,7 +289,7 @@ if __name__ == '__main__':
 
         from PIL import Image
 
-        with dataset.VideoFrameStorage(
+        with dataset.VideoBaseFrameStorage(
                 dataset.get_video_frame_dump_dir_path(),
                 mode='r'
         ) as vf_store:
