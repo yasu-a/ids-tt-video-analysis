@@ -30,7 +30,7 @@ Tチーム動画分析のリポジトリです。
 
 ![img](presen_materials/note_rnn_rally_detection/rally_detection_rnn.gif)
 
-# スクリプトの実行
+# ~スクリプトの実行~
 
 <!-- TODO: adapt to new-style config -->
 
@@ -58,7 +58,7 @@ Tチーム動画分析のリポジトリです。
 | `MOTION_DUMP_DIR_PATH` | Dump destination of [main_process_motion_dump.py](./main_process_motion_dump.py) |       `r'C:\idstt\iDSTTVideoFrameDump\motions'`        |
 |  `DEFAULT_VIDEO_NAME`  |  Default video name to be used in each process when no video names is specified  |           `'20230205_04_Narumoto_Harimoto'`            |
 
-# スクリプトの概要
+# ~スクリプトの概要~
 
 |                             NAME                             |      DESCRIPTION       |
 |:------------------------------------------------------------:|:----------------------:|
