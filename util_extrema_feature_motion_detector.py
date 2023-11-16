@@ -1,13 +1,11 @@
 import functools
 
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage
 import skimage.feature
-from sklearn.metrics.pairwise import cosine_similarity
-
-import matplotlib.pyplot as plt
-
 from legacy import util
+from sklearn.metrics.pairwise import cosine_similarity
 
 
 class ExtremaFeatureMotionDetector:
@@ -131,10 +129,6 @@ class ExtremaFeatureMotionDetector:
             original_a = self._process_input(original_a)
             original_b = self._process_input(original_b)
 
-            plt.figure()
-            plt.imshow(original_a)
-            plt.show()
-
             # motion_x_mean: npa[rect_height, rect_width]
             motion_a_mean = self._process_mean(motion_a)
             motion_b_mean = self._process_mean(motion_b)
@@ -142,6 +136,22 @@ class ExtremaFeatureMotionDetector:
             # motion_x_local_max: npa[N_MAX_x, 2(2nd axis, 1st axis)]
             motion_a_local_max = self._local_max(motion_a_mean)
             motion_b_local_max = self._local_max(motion_b_mean)
+
+            for m, orig, ps in [[motion_a_mean, original_a, motion_a_local_max],
+                                [motion_b_mean, original_b, motion_b_local_max]]:
+                plt.figure()
+                plt.imshow(m)
+                plt.show()
+
+                plt.figure()
+                plt.imshow(m)
+                plt.scatter(*ps.T[[1, 0]], marker='x', s=300, color='yellow')
+                plt.show()
+
+                plt.figure()
+                plt.imshow(orig)
+                plt.scatter(*ps.T[[1, 0]], marker='x', s=300, color='yellow')
+                plt.show()
 
             # key_img_x: npa[N_MAX_x, frame_size, frame_size, channels]
             key_img_a = util.extract_frames_around(
@@ -157,17 +167,15 @@ class ExtremaFeatureMotionDetector:
                 size=self.__p_key_image_size
             )
 
-            plt.figure()
-            plt.imshow(motion_a_mean)
-            plt.scatter(*motion_a_local_max.T[::-1], marker='x', color='red', s=400)
-            plt.title('motion_a_mean')
-            plt.show()
-
-            plt.figure()
-            plt.imshow(motion_b_mean)
-            plt.scatter(*motion_b_local_max.T[::-1], marker='x', color='red', s=400)
-            plt.title('motion_b_mean')
-            plt.show()
+            for j, v in enumerate([key_img_a, key_img_b]):
+                n = len(v)
+                for i in range(n):
+                    plt.figure()
+                    # plt.subplot(5, 3, i + 1)
+                    plt.imshow(v[i])
+                    plt.axis('off')
+                    plt.tight_layout()
+                    plt.savefig(f'outout/{j}{i:03d}.png')
 
             rect_offset = self.__c_rect[0].start, self.__c_rect[1].start
 
@@ -380,8 +388,6 @@ class ExtremaFeatureMotionDetector:
 
 
 def main():
-    from legacy.util import motions, originals
-
     i = 193
     motion_images = motions[i], motions[i + 1]
     original_images = originals[i], originals[i + 1]
