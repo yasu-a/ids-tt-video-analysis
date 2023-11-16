@@ -1,4 +1,5 @@
 import collections
+import dataclasses
 import hashlib
 import json
 import os.path
@@ -36,6 +37,7 @@ def load_md5_and_json(file_path) -> tuple[str, Any]:
 
 
 class VideoMarkerEntry(NamedTuple):
+    parent: 'VideoMarker'
     frame_index: int
     name: str
     tags: tuple[str]
@@ -49,6 +51,7 @@ class VideoMarker:
         self.__frame_indexes = np.array(sorted(self.__markers.keys()))
         self.__entries = {
             i: VideoMarkerEntry(
+                parent=self,
                 frame_index=i,
                 name=self.__markers[i],
                 tags=self.__tags[i]
@@ -96,6 +99,9 @@ class VideoMarker:
     def keys(self) -> Iterator[int]:  # frame index
         yield from self.__entries.keys()
 
+    def entries(self) -> Iterator[VideoMarkerEntry]:
+        yield from self.__entries.values()
+
     def find_neighbour_frame_index(self, index):
         a = np.abs(self.__frame_indexes - index)
         return self.__frame_indexes[np.argmin(a)]
@@ -142,6 +148,12 @@ class VideoMarkerSet(NamedTuple):
         for m in self.markers:
             frame_indexes = np.array(list(m.keys()))
             diff = np.diff(frame_indexes)
+            import scipy.stats
+            kernel = scipy.stats.gaussian_kde(diff, bw_method=.03)
+            import matplotlib.pyplot as plt
+            _, x, _ = plt.hist(diff, bins=256, density=True)
+            plt.plot(x, kernel(x))
+            plt.show()
             margin = (diff.mean() - diff.std() * 2) / 2
             margins.append(margin)
         return min(margins)
@@ -150,29 +162,52 @@ class VideoMarkerSet(NamedTuple):
     def classify(self):
         meaningful_margin = self.calculate_meaningful_margin()
 
-        target_frame_indexes = sorted({
-            frame_index
-            for m in self.markers
-            for frame_index in m.keys()
-        })
-        clst = collections.defaultdict(set)
-        n_prev_targets = None
-        i = 0
-        while target_frame_indexes:
-            target_fi = target_frame_indexes.pop()
-            for m in self.markers:
-                neighbour_fi = m.find_neighbour_frame_index(target_fi)
-                if abs(neighbour_fi - target_fi) > meaningful_margin:
-                    continue
-                clst[target_fi].add(neighbour_fi)
-                target_frame_indexes.remove(neighbour_fi)
+        @dataclasses.dataclass
+        class Cluster:
+            points: list[VideoMarkerEntry]
+            v_min: float
+            v_max: float
 
-            n_targets = len(target_frame_indexes)
-            if n_prev_targets == n_targets:
-                break
-            n_prev_targets = n_targets
+            @classmethod
+            def create_insntace(cls):
+                return Cluster(
+                    points=[],
+                    v_min=None,
+                    v_max=None
+                )
 
-        return clst, target_frame_indexes
+            def add_point(self, entry: VideoMarkerEntry):
+                self.points.append(entry)
+                a = np.array([m.frame_index for m in self.points])
+                self.v_min = a.min()
+                self.v_max = a.max()
+
+            def is_neighbour(self, entry: VideoMarkerEntry):
+                return self.v_min - meaningful_margin <= entry.frame_index \
+                    <= self.v_max + meaningful_margin
+
+        clusters: list[Cluster] = []
+
+        def find_nearest_cluster(e: VideoMarkerEntry) -> Optional[Cluster]:
+            for c in clusters:
+                if c.is_neighbour(e):
+                    return c
+            return None
+
+        for m in self.markers:
+            for e in m.entries():
+                c = find_nearest_cluster(e)
+                if c is None:
+                    c = Cluster.create_insntace()
+                    clusters.append(c)
+                c.add_point(e)
+
+        groups: list[list[VideoMarkerEntry]] \
+            = [list(c.points) for c in clusters if len(c.points) > 1]
+        rest_entries \
+            = [list(c.points) for c in clusters if len(c.points) <= 1]
+
+        return groups, rest_entries
 
 
 class MarkerDataSet:
@@ -180,4 +215,4 @@ class MarkerDataSet:
         self.__marker_set = VideoMarkerSet.create_full_set()
         for k, v in self.__marker_set.items():
             print(k)
-            pprint(v.classify())
+            pprint(v.classify()[0])
