@@ -1,9 +1,10 @@
 import collections
-import dataclasses
+import functools
 import hashlib
 import json
 import os.path
 import re
+from dataclasses import dataclass
 from pprint import pprint
 from typing import Any, NamedTuple, Optional, Iterator
 
@@ -23,16 +24,31 @@ def get_video_name_from_json_path(path):
     return m.group(0)
 
 
+def normalized_json_text(json_root):
+    norm = json.dumps(
+        json_root,
+        indent=2,
+        sort_keys=True,
+        ensure_ascii=True
+    ).encode('latin-1')
+    return norm
+
+
+def json_to_md5_digest(json_root):
+    norm = normalized_json_text(json_root)
+    hash_value: str = hashlib.md5(norm).hexdigest()
+    return hash_value
+
+
+def json_to_python_hash(json_root):
+    md5_digest = json_to_md5_digest(json_root)
+    return hash(md5_digest)
+
+
 def load_md5_and_json(file_path) -> tuple[str, Any]:
     with open(file_path, 'r') as f:
         json_root = json.load(f)
-        normalized_json_text = json.dumps(
-            json_root,
-            indent=2,
-            sort_keys=True,
-            ensure_ascii=True
-        ).encode('latin-1')
-        hash_value: str = hashlib.md5(normalized_json_text).hexdigest()
+        hash_value: str = json_to_md5_digest(json_root)
     return hash_value, json_root
 
 
@@ -44,12 +60,13 @@ class VideoMarkerEntry(NamedTuple):
 
 
 class VideoMarker:
-    def __init__(self, src_json_root):
+    def __init__(self, src_json_root, src_path=None):
+        self.__src_path = src_path
         self.__json_root = self._normalize_json(src_json_root)
         self.__markers = self.__json_root['markers']
         self.__tags = self.__json_root['tags']
         self.__frame_indexes = np.array(sorted(self.__markers.keys()))
-        self.__entries = {
+        self.__frame_index_to_entry: dict[int, VideoMarkerEntry] = {
             i: VideoMarkerEntry(
                 parent=self,
                 frame_index=i,
@@ -57,6 +74,49 @@ class VideoMarker:
                 tags=self.__tags[i]
             ) for i in self.__frame_indexes
         }
+
+    @property
+    def frame_index_array(self):
+        return np.array(self.__frame_indexes)
+
+    @functools.cached_property
+    def ordered_marker_names(self) -> tuple[str]:
+        return tuple(sorted(entry.name for entry in self.entries()))
+
+    @property
+    def marker_name_index_array(self):
+        name_to_name_index = {name: i for i, name in enumerate(self.ordered_marker_names)}
+        return np.array([
+            name_to_name_index[entry.name]
+            for entry in self.entries()
+        ])
+
+    # marker_name: str -> frame_index: int
+    def frame_indexes_grouped_by_marker_name(self) -> dict[str, np.ndarray]:
+        dct = collections.defaultdict(list)
+        for entry in self.entries():
+            dct[entry.name].append(entry.frame_index)
+        return {
+            marker_name: np.array(frame_index_lst)
+            for marker_name, frame_index_lst in dct.items()
+        }
+
+    @functools.cached_property
+    def __hash(self):
+        return json_to_python_hash(self.__json_root)
+
+    @functools.cached_property
+    def __ordering_key(self):
+        return json_to_md5_digest(self.__json_root)
+
+    def __hash__(self):
+        return self.__hash
+
+    def __lt__(self, other):
+        return self.__ordering_key < other.__ordering_key
+
+    def __repr__(self):
+        return f'VideoMarker({self.__src_path!r})'
 
     @classmethod
     def _normalize_json(cls, json_root):
@@ -83,7 +143,9 @@ class VideoMarker:
             tags=tags
         )
 
-    def dump(self, path):
+    def dump(self, path=None):
+        path = path or self.__src_path
+        assert path is not None, path
         with open(path, 'w') as f:
             json.dump(self.__json_root, f, indent=2, sort_keys=True)
 
@@ -91,16 +153,16 @@ class VideoMarker:
     def load(cls, path):
         with open(path, 'r') as f:
             json_root = json.load(f)
-        return cls(src_json_root=json_root)
+        return cls(src_json_root=json_root, src_path=path)
 
     def __getitem__(self, frame_index) -> Optional[VideoMarkerEntry]:
         return self.__markers.get(frame_index)
 
     def keys(self) -> Iterator[int]:  # frame index
-        yield from self.__entries.keys()
+        yield from self.__frame_index_to_entry.keys()
 
     def entries(self) -> Iterator[VideoMarkerEntry]:
-        yield from self.__entries.values()
+        yield from self.__frame_index_to_entry.values()
 
     def find_neighbour_frame_index(self, index):
         a = np.abs(self.__frame_indexes - index)
@@ -119,7 +181,7 @@ def import_json(json_path):
     if os.path.exists(file_path):
         return json_path, None
 
-    VideoMarker(json_root).dump(file_path)
+    VideoMarker(json_root, file_path).dump()
 
     return json_path, file_path
 
@@ -130,22 +192,30 @@ def iter_marker_dir_path_and_video_names():
         yield os.path.join(root_dir, video_name), video_name
 
 
-class VideoMarkerSet(NamedTuple):
-    markers: list[VideoMarker]
+@dataclass(frozen=True)
+class VideoMarkerSet:
+    video_name: str
+    marker_set: tuple[VideoMarker]
 
     @classmethod
     def create_full_set(cls) -> dict[str, 'VideoMarkerSet']:
-        dct = collections.defaultdict(lambda: VideoMarkerSet(markers=[]))
+        dct: dict[str, list[VideoMarker]] = collections.defaultdict(list[VideoMarker])
         for dir_path, video_name in iter_marker_dir_path_and_video_names():
             for json_name in os.listdir(dir_path):
                 json_path = os.path.join(dir_path, json_name)
                 marker = VideoMarker.load(json_path)
-                dct[video_name].markers.append(marker)
-        return dct
+                dct[video_name].append(marker)
+        cls(video_name='aa', marker_set=tuple())
+        return {
+            video_name: cls(
+                video_name=video_name,
+                marker_set=tuple(marker_lst)
+            ) for video_name, marker_lst in dct.items()
+        }
 
     def calculate_meaningful_margin(self) -> float:
         margins = []
-        for m in self.markers:
+        for m in self.marker_set:
             frame_indexes = np.array(list(m.keys()))
             diff = np.diff(frame_indexes)
             import scipy.stats
@@ -162,14 +232,14 @@ class VideoMarkerSet(NamedTuple):
     def classify(self):
         meaningful_margin = self.calculate_meaningful_margin()
 
-        @dataclasses.dataclass
+        @dataclass
         class Cluster:
             points: list[VideoMarkerEntry]
             v_min: float
             v_max: float
 
             @classmethod
-            def create_insntace(cls):
+            def create_instance(cls):
                 return Cluster(
                     points=[],
                     v_min=None,
@@ -194,11 +264,11 @@ class VideoMarkerSet(NamedTuple):
                     return c
             return None
 
-        for m in self.markers:
+        for m in self.marker_set:
             for e in m.entries():
                 c = find_nearest_cluster(e)
                 if c is None:
-                    c = Cluster.create_insntace()
+                    c = Cluster.create_instance()
                     clusters.append(c)
                 c.add_point(e)
 
