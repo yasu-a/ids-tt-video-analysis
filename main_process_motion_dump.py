@@ -12,6 +12,7 @@ from util_extrema_feature_motion_detector import ExtremaFeatureMotionDetector
 
 import dataset
 
+dataset.forbid_writing = True
 
 def process_rect(rect):
     w = rect[1].stop - rect[1].start
@@ -23,8 +24,6 @@ NUM_MOTION_VECTORS_MAX = 64
 
 
 def process(video_name, rect=None, start=None, stop=None):
-    assert start is None, 'providing start is forbidden'
-
     if rect is None:
         rect = train_input.load_rect(video_name)
 
@@ -40,45 +39,39 @@ def process(video_name, rect=None, start=None, stop=None):
             rect
         )
 
-        with dataset.MotionStorage(
-                dataset.get_motion_dump_dir_path(video_name),
-                mode='w',
-                max_entries=vf_store.count() - 1
-        ) as m_store:
-            for i in tqdm(range(start, stop)):
-                src_current, src_next = vf_store.get(i), vf_store.get(i + 1)
+        for i in tqdm(range(start, stop)):
+            src_current, src_next = vf_store.get(i), vf_store.get(i + 1)
 
-                motion_images = src_current['motion'], src_next['motion']
-                original_images = src_current['original'], src_next['original']
-                ts = src_current['timestamp']
+            motion_images = src_current['motion'], src_next['motion']
+            original_images = src_current['original'], src_next['original']
+            ts = src_current['timestamp']
 
-                result = detector.compute(original_images, motion_images)
+            result = detector.compute(original_images, motion_images)
 
-                def process_matrix(m):
-                    if m is None:
-                        return np.full((NUM_MOTION_VECTORS_MAX, 2), np.nan)
-                    m = m.astype(np.float32)
-                    n_pad = NUM_MOTION_VECTORS_MAX - m.shape[0]
-                    pad = np.full((n_pad, 2), np.nan)
-                    m = np.concatenate([m, pad], axis=0)
-                    assert len(m) == NUM_MOTION_VECTORS_MAX, m.shape
-                    return m
+            def process_matrix(m):
+                if m is None:
+                    return np.full((NUM_MOTION_VECTORS_MAX, 2), np.nan)
+                m = m.astype(np.float32)
+                n_pad = NUM_MOTION_VECTORS_MAX - m.shape[0]
+                pad = np.full((n_pad, 2), np.nan)
+                m = np.concatenate([m, pad], axis=0)
+                assert len(m) == NUM_MOTION_VECTORS_MAX, m.shape
+                return m
 
-                if result['valid']:
-                    data_dct = dict(
-                        start=process_matrix(result['global_motion_center_a']),
-                        end=process_matrix(result['global_motion_center_b']),
-                        frame_index=i,
-                        timestamp=ts
-                    )
-                else:
-                    data_dct = dict(
-                        start=process_matrix(None),
-                        end=process_matrix(None),
-                        frame_index=i,
-                        timestamp=ts
-                    )
-                m_store.put(i, data_dct)
+            if result['valid']:
+                data_dct = dict(
+                    start=process_matrix(result['global_motion_center_a']),
+                    end=process_matrix(result['global_motion_center_b']),
+                    frame_index=i,
+                    timestamp=ts
+                )
+            else:
+                data_dct = dict(
+                    start=process_matrix(None),
+                    end=process_matrix(None),
+                    frame_index=i,
+                    timestamp=ts
+                )
 
 
 def main(video_name):
@@ -86,7 +79,7 @@ def main(video_name):
     # height: 奥の選手の頭から手前の選手の足がすっぽり入るように
     # width: ネットの部分の卓球台の幅に合うように
 
-    process(video_name, rect)
+    process(video_name, rect, start=200, stop=201)
 
 
 if __name__ == '__main__':

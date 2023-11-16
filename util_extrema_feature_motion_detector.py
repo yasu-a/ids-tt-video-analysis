@@ -5,6 +5,8 @@ import scipy.ndimage
 import skimage.feature
 from sklearn.metrics.pairwise import cosine_similarity
 
+import matplotlib.pyplot as plt
+
 from legacy import util
 
 
@@ -129,6 +131,10 @@ class ExtremaFeatureMotionDetector:
             original_a = self._process_input(original_a)
             original_b = self._process_input(original_b)
 
+            plt.figure()
+            plt.imshow(original_a)
+            plt.show()
+
             # motion_x_mean: npa[rect_height, rect_width]
             motion_a_mean = self._process_mean(motion_a)
             motion_b_mean = self._process_mean(motion_b)
@@ -150,6 +156,18 @@ class ExtremaFeatureMotionDetector:
                 y=motion_b_local_max[:, 0],
                 size=self.__p_key_image_size
             )
+
+            plt.figure()
+            plt.imshow(motion_a_mean)
+            plt.scatter(*motion_a_local_max.T[::-1], marker='x', color='red', s=400)
+            plt.title('motion_a_mean')
+            plt.show()
+
+            plt.figure()
+            plt.imshow(motion_b_mean)
+            plt.scatter(*motion_b_local_max.T[::-1], marker='x', color='red', s=400)
+            plt.title('motion_b_mean')
+            plt.show()
 
             rect_offset = self.__c_rect[0].start, self.__c_rect[1].start
 
