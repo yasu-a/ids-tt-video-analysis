@@ -6,6 +6,7 @@ import process
 
 class ProcessStageMarkerImport(process.ProcessStage):
     NAME = 'marker-import'
+    ALIASES = 'mi',
 
     @classmethod
     def customize_parser(cls, parser: argparse.ArgumentParser) -> None:
