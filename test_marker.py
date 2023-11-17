@@ -2,9 +2,9 @@ from pprint import pprint
 
 import numpy as np
 
-import labels.marker
+import label_manager.frame_label
 
-ds = labels.marker.VideoMarkerSet.create_full_set()
+ds = label_manager.marker.VideoMarkerSet.create_full_set()
 pprint(ds)
 marker_set = ds['20230205_04_Narumoto_Harimoto']
 

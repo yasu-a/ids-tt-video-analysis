@@ -3,7 +3,7 @@ import glob
 import os.path
 
 import process
-from labels.marker.importer import import_jsons
+from label_manager.frame_label.importer import import_jsons
 
 
 class ProcessStageMarkerImport(process.ProcessStage):
