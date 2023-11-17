@@ -5,7 +5,7 @@ from typing import NamedTuple, Literal
 import app_logging
 from . import common
 from . import util
-from .. import common as labels_common
+from .. import common as manager_common
 
 logger = app_logging.create_logger(__name__)
 
@@ -60,7 +60,7 @@ class Importer(NamedTuple):
 
     @property
     def label_data_json_path(self):
-        return labels_common.resolve_data_path(
+        return manager_common.resolve_data_path(
             common.data_root_path,
             self.meta.video_name,
             self.meta.hash_digest + '.json'
