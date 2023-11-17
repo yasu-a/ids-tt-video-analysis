@@ -1,7 +1,9 @@
 import argparse
+import glob
+import os.path
 
-import labels.marker
 import process
+from labels.marker.importer import import_jsons
 
 
 class ProcessStageMarkerImport(process.ProcessStage):
@@ -13,14 +15,21 @@ class ProcessStageMarkerImport(process.ProcessStage):
         parser.add_argument('json_paths', type=str, nargs='+')
 
     def __init__(self, json_paths: list[str]):
-        self.__json_paths = json_paths
+        paths = []
+        for maybe_path in json_paths:
+            if os.path.exists(maybe_path):
+                paths.append(maybe_path)
+            else:
+                detected_paths = glob.glob(maybe_path, recursive=True)
+                if not detected_paths:
+                    print(f'Warning: nothing extracted from {maybe_path!r}')
+                for path in detected_paths:
+                    paths.append(path)
+
+        self.__json_paths = paths
 
     def run(self):
-        for json_path in self.__json_paths:
-            print(f'Loading {json_path!r} ...', end=' ')
-            _, marker_json_path = labels.marker.import_json(json_path)
-            if marker_json_path:
-                print('imported')
-            else:
-                print('already exists')
+        import app_logging
+        app_logging.set_log_level(app_logging.INFO)
+        import_jsons(*self.__json_paths)
         print('Done!')

@@ -1,4 +1,3 @@
-import functools
 from pprint import pprint
 
 import numpy as np
@@ -35,40 +34,6 @@ def calculate_margin(diff: np.ndarray, p_thresh=99.99 / 100) -> float:
     margin = thresh_index
 
     return margin
-
-
-class ParallelArrayReader:
-    def __init__(self, arrays: list[np.ndarray]):
-        self.__arrays = [np.sort(a) for a in arrays]
-        self.__pointers = np.zeros(len(arrays), dtype=int)
-
-    @property
-    def n_arrays(self):
-        return len(self.__arrays)
-
-    def iter_array_index(self):
-        return range(self.n_arrays)
-
-    @functools.cached_property
-    def array_length(self):
-        return np.array([len(a) for a in self.__arrays])
-
-    def valid_array_mask(self):
-        return self.__pointers < self.array_length
-
-    def parallel_data(self):
-        valid_array_mask = self.valid_array_mask()
-        return np.array([
-            self.__arrays[g][i] if valid_array_mask[g] else np.nan
-            for g, i in enumerate(self.__pointers)
-        ])
-
-    @property
-    def pointers(self):
-        return self.__pointers
-
-    def increment(self, indexes):
-        self.__pointers[indexes] += 1
 
 
 def cluster(arrays_: list[np.ndarray]) -> list[np.ndarray]:
