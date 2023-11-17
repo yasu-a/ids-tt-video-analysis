@@ -71,91 +71,22 @@ class ParallelArrayReader:
         self.__pointers[indexes] += 1
 
 
-def cluster(arrays_: list[np.ndarray]):
-    reader = ParallelArrayReader(arrays_)
-
-    pprint(arrays_)
-
+def cluster(arrays_: list[np.ndarray]) -> list[np.ndarray]:
     margin = min(calculate_margin(np.diff(a), p_thresh=0.9999) for a in arrays_)
 
-    cluster_labels = []
-    for gi in reader.iter_array_index():
-        cluster_labels.append(np.array([-1] * len(arrays_[gi])))
+    points = np.concatenate(arrays_)[:, None]
 
-    new_cluster_label = 0
+    from sklearn.cluster import DBSCAN
 
-    while np.all(reader.valid_array_mask()):
-        row_data = reader.parallel_data()
+    labels = DBSCAN(eps=margin, min_samples=2).fit_predict(points)
 
-        # grouping row
-        adj_matrix = [
-            [
-                i != j and
-                row_data[i] is not None and
-                row_data[j] is not None and
-                abs(row_data[i] - row_data[j]) < margin
-                for i in reader.iter_array_index()
-            ]
-            for j in reader.iter_array_index()
-        ]
+    label_lst = []
+    for a in arrays_:
+        n = len(a)
+        label_lst.append(labels[:n])
+        labels = labels[n:]
 
-        item_labels = [-1] * reader.n_arrays
-        while True:
-            # pop non-labeled group index
-            non_labeled_group_index = {i for i, lbl in enumerate(item_labels) if lbl < 0}
-
-            # if all items are labeled
-            if not non_labeled_group_index:
-                break
-
-            start = non_labeled_group_index.pop()
-
-            # find connected
-            stack = [start]
-            history = []
-            while stack:
-                gi = stack.pop()
-                history.append(gi)
-                connected = [
-                    j
-                    for j in reader.iter_array_index()
-                    if adj_matrix[gi][j] and j not in history
-                ]
-                stack += connected
-
-            # new_label found indexes
-            new_label = max(item_labels) + 1
-            for gi in history:
-                item_labels[gi] = new_label
-
-        # take group with minimum centroid
-        # generate group iterator
-        group_it = [
-            [gi for gi, lbl in enumerate(item_labels) if lbl == target_lbl]
-            for target_lbl in sorted(set(item_labels))
-        ]
-
-        # find group indexes with minimum centroid
-        best_gis = None
-        best_centroid = None
-        for gis in group_it:
-            if gis[0] is None:
-                assert len(gis) == 1, gis
-                continue
-            centroid = row_data[gis].mean()
-            if best_centroid is None or best_centroid > centroid:
-                best_gis = gis
-                best_centroid = centroid
-
-        assert best_gis is not None, item_labels
-
-        # set cluster labels on items in best_gis
-        for gi in best_gis:
-            cluster_labels[gi][reader.pointers[gi]] = new_cluster_label
-        reader.increment(best_gis)
-        new_cluster_label += 1
-
-    return cluster_labels
+    return [np.array(a) for a in label_lst]
 
 
 def main():
