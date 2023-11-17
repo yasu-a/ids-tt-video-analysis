@@ -1,3 +1,4 @@
+import functools
 from pprint import pprint
 
 import numpy as np
@@ -6,7 +7,7 @@ import labels.marker
 
 ds = labels.marker.VideoMarkerSet.create_full_set()
 pprint(ds)
-_, marker_set = ds.popitem()
+marker_set = ds['20230205_04_Narumoto_Harimoto']
 
 
 def calculate_margin(diff: np.ndarray, p_thresh=99.99 / 100) -> float:
@@ -36,28 +37,55 @@ def calculate_margin(diff: np.ndarray, p_thresh=99.99 / 100) -> float:
     return margin
 
 
-def cluster(groups: list[np.ndarray]):
-    n_groups = len(groups)
+class ParallelArrayReader:
+    def __init__(self, arrays: list[np.ndarray]):
+        self.__arrays = [np.sort(a) for a in arrays]
+        self.__pointers = np.zeros(len(arrays), dtype=int)
 
-    for gi in range(n_groups):
-        groups[gi] = np.sort(groups[gi])
+    @property
+    def n_arrays(self):
+        return len(self.__arrays)
 
-    pprint(groups)
+    def iter_array_index(self):
+        return range(self.n_arrays)
 
-    margin = min(calculate_margin(np.diff(a), p_thresh=0.9999) for a in groups)
+    @functools.cached_property
+    def array_length(self):
+        return np.array([len(a) for a in self.__arrays])
+
+    def valid_array_mask(self):
+        return self.__pointers < self.array_length
+
+    def parallel_data(self):
+        valid_array_mask = self.valid_array_mask()
+        return np.array([
+            self.__arrays[g][i] if valid_array_mask[g] else np.nan
+            for g, i in enumerate(self.__pointers)
+        ])
+
+    @property
+    def pointers(self):
+        return self.__pointers
+
+    def increment(self, indexes):
+        self.__pointers[indexes] += 1
+
+
+def cluster(arrays_: list[np.ndarray]):
+    reader = ParallelArrayReader(arrays_)
+
+    pprint(arrays_)
+
+    margin = min(calculate_margin(np.diff(a), p_thresh=0.9999) for a in arrays_)
 
     cluster_labels = []
-    for gi in range(n_groups):
-        cluster_labels.append(np.array([-1] * len(groups[gi])))
+    for gi in reader.iter_array_index():
+        cluster_labels.append(np.array([-1] * len(arrays_[gi])))
 
     new_cluster_label = 0
 
-    pointers = [0] * n_groups
-    while any(p < len(groups[i]) for i, p in enumerate(pointers)):
-        row_data = np.array([
-            groups[i][p] if p < len(groups[i]) else None
-            for i, p in enumerate(pointers)
-        ])
+    while np.all(reader.valid_array_mask()):
+        row_data = reader.parallel_data()
 
         # grouping row
         adj_matrix = [
@@ -66,12 +94,12 @@ def cluster(groups: list[np.ndarray]):
                 row_data[i] is not None and
                 row_data[j] is not None and
                 abs(row_data[i] - row_data[j]) < margin
-                for i in range(n_groups)
+                for i in reader.iter_array_index()
             ]
-            for j in range(n_groups)
+            for j in reader.iter_array_index()
         ]
 
-        item_labels = [-1] * n_groups
+        item_labels = [-1] * reader.n_arrays
         while True:
             # pop non-labeled group index
             non_labeled_group_index = {i for i, lbl in enumerate(item_labels) if lbl < 0}
@@ -90,7 +118,7 @@ def cluster(groups: list[np.ndarray]):
                 history.append(gi)
                 connected = [
                     j
-                    for j in range(n_groups)
+                    for j in reader.iter_array_index()
                     if adj_matrix[gi][j] and j not in history
                 ]
                 stack += connected
@@ -123,8 +151,8 @@ def cluster(groups: list[np.ndarray]):
 
         # set cluster labels on items in best_gis
         for gi in best_gis:
-            cluster_labels[gi][pointers[gi]] = new_cluster_label
-            pointers[gi] += 1
+            cluster_labels[gi][reader.pointers[gi]] = new_cluster_label
+        reader.increment(best_gis)
         new_cluster_label += 1
 
     return cluster_labels
