@@ -52,7 +52,7 @@ class VideoFrameLabelSampleSetMixin:
         ...
 
     @functools.cached_property
-    def frame_label_name_set(self) -> tuple[str]:
+    def frame_label_name_set(self) -> tuple[str, ...]:
         s = sorted({
             label_name
             for sample_labels in self

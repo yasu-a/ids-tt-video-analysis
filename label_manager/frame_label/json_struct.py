@@ -33,6 +33,7 @@ class LabelJsonData(__LabelJsonData):
         if set(markers.keys()) != set(tags.keys()):
             logger.warning(f'Inconsistent frame indexes')
 
+        # noinspection PyArgumentList
         return super().__new__(cls, markers, tags)
 
     @classmethod

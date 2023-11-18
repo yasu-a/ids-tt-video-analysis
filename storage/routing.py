@@ -12,7 +12,7 @@ class StoragePath(NamedTuple):
     domain: str
     entity: str
     context: str
-    args: tuple[str] = ()
+    args: tuple[str, ...] = ()
 
     @property
     def path(self):

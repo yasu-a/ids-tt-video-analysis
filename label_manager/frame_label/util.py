@@ -43,8 +43,8 @@ def calculate_margin(diff: np.ndarray, p_thresh=99.99 / 100) -> float:
     """
     assert np.all(diff >= 0), diff
 
-    hist = np.zeros(diff.max() + 1)
-    x = np.arange(diff.max() + 1)
+    hist = np.zeros(diff.max(initial=0) + 1)
+    x = np.arange(diff.max(initial=0) + 1)
     indexes, counts = np.unique(diff, return_counts=True)
     hist[indexes] = counts
 
@@ -55,7 +55,7 @@ def calculate_margin(diff: np.ndarray, p_thresh=99.99 / 100) -> float:
     cdf = np.array(
         list(ndtr(np.ravel(item - kernel.dataset) / kernel.factor).mean() for item in x)
     )
-    thresh_index = x[cdf < 1 - p_thresh].max(0)
+    thresh_index = x[cdf < 1 - p_thresh].max(initial=0)
     margin = thresh_index
 
     return margin

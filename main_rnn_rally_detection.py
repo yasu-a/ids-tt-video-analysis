@@ -56,8 +56,8 @@ def y_rnn_reshape(y):
     cls_one = y.astype(bool)
     cls_num = np.select([cls_pos, cls_neg, cls_one], [1, 2, 3], default=0)
 
-    import keras.utils.np_utils
-    y = keras.utils.np_utils.to_categorical(cls_num)
+    from tensorflow.python.keras.utils import np_utils
+    y = np_utils.to_categorical(cls_num)
 
     return y[SEQ_LEN - 1:]
 
@@ -80,12 +80,13 @@ if __name__ == '__main__':
 
     n_hidden = 128
 
+    # noinspection PyUnreachableCode
     if 0:
-        from tensorflow.keras.models import Sequential
-        from tensorflow.keras.layers import Dense, Activation
-        from tensorflow.keras.layers import LSTM
-        from tensorflow.keras.optimizers import Adam
-        from tensorflow.keras.callbacks import EarlyStopping
+        from tensorflow.python.keras.models import Sequential
+        from tensorflow.python.keras.layers import Dense, Activation
+        from tensorflow.python.keras.layers import LSTM
+        from tensorflow.python.keras.optimizers import Adam
+        from tensorflow.python.keras.callbacks import EarlyStopping
 
         model = Sequential()
         model.add(LSTM(
@@ -114,7 +115,7 @@ if __name__ == '__main__':
 
         model.save('model')
     else:
-        from tensorflow.keras.models import load_model
+        from tensorflow.python.keras.models import load_model
 
         model = load_model('model')
         model.summary()
@@ -158,6 +159,7 @@ if __name__ == '__main__':
         fig.tight_layout()
         fig.show()
 
+    # noinspection PyUnreachableCode
     if 0:
         import async_writer
         from PIL import Image, ImageDraw

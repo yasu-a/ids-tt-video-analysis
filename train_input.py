@@ -46,8 +46,3 @@ def update_rect(video_name, rect):
     json_root[video_name] = rect_lst
     with open('label_data/rect.json', 'w') as f:
         json.dump(json_root, f, indent=2, sort_keys=True)
-
-
-if __name__ == '__main__':
-    df = load('label_data/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv')
-    print(df)

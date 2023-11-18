@@ -110,6 +110,7 @@ class ProcessStageVideoDump(process.ProcessStage):
                     im = cv2.resize(im, None, fx=self.__resize_ratio, fy=self.__resize_ratio)
                     im = im.astype(np.float32)
                     im /= 256.0
+                    # noinspection PyUnresolvedReferences
                     assert im.max() < 1.0, im.max()
                     images[i] = im
 

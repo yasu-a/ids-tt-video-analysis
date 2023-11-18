@@ -9,6 +9,7 @@ POSE_SERVER_PORT = 13579
 
 
 def main():
+    # TODO: replace dataset to npstorage
     with dataset.VideoBaseFrameStorage(
             dataset.get_video_frame_dump_dir_path(video_name=None, high_res=False),
             mode='r',
@@ -30,6 +31,8 @@ def main():
             timestamps = [dct['timestamp'] for dct in data_batch]
             client = pose.PoseDetectorClient(port=POSE_SERVER_PORT)
             results = client.detect(frames)
+
+            # TODO: continue implementation
 
 
 #

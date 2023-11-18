@@ -34,11 +34,11 @@ class VideoFrameLabelSampleMixin:
         return a
 
     @functools.cached_property
-    def frame_label_name_list(self) -> tuple[str]:
+    def frame_label_name_list(self) -> tuple[str, ...]:
         return tuple(self.content.labels.markers.values())
 
     @functools.cached_property
-    def frame_label_name_set(self) -> tuple[str]:
+    def frame_label_name_set(self) -> tuple[str, ...]:
         return tuple(sorted(frozenset(self.frame_label_name_list)))
 
 
