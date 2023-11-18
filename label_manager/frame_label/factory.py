@@ -1,11 +1,11 @@
 import os
 
 from . import common
-from .video_label_set import VideoFrameLabelSet
+from .sample_set import VideoFrameLabelSampleSet
 from .. import common as manager_common
 
 
-class FrameLabelSet:
+class VideoFrameLabelFactory:
     def __init__(self, root_path):
         self.__root_path = root_path
 
@@ -22,7 +22,7 @@ class FrameLabelSet:
         return self.video_names()
 
     def __getitem__(self, video_name: str):
-        return VideoFrameLabelSet(os.path.join(self.__root_path, video_name))
+        return VideoFrameLabelSampleSet(os.path.join(self.__root_path, video_name))
 
     def __repr__(self):
-        return f'FrameLabelSet(root_path={self.__root_path!r})'
+        return f'VFLFactory(root_path={self.__root_path!r})'

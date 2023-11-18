@@ -1,5 +1,9 @@
 from typing import NamedTuple
 
+import app_logging
+
+logger = app_logging.create_logger(__name__)
+
 
 class LabelJsonMeta(NamedTuple):
     video_name: str
@@ -25,6 +29,10 @@ class LabelJsonData(__LabelJsonData):
     def __new__(cls, markers, tags):
         markers = {int(k): v for k, v in markers.items()}
         tags = {int(k): v for k, v in tags.items()}
+
+        if set(markers.keys()) != set(tags.keys()):
+            logger.warning(f'Inconsistent frame indexes')
+
         return super().__new__(cls, markers, tags)
 
     @classmethod

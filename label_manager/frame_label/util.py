@@ -2,6 +2,7 @@ import hashlib
 import json
 import os.path
 import re
+from typing import Any
 
 import numpy as np
 
@@ -40,6 +41,8 @@ def calculate_margin(diff: np.ndarray, p_thresh=99.99 / 100) -> float:
     :param p_thresh: 分離確率
     :return: `p_thresh`の確率で隣接する点どうしを分離できる最小距離
     """
+    assert np.all(diff >= 0), diff
+
     hist = np.zeros(diff.max() + 1)
     x = np.arange(diff.max() + 1)
     indexes, counts = np.unique(diff, return_counts=True)
@@ -58,8 +61,8 @@ def calculate_margin(diff: np.ndarray, p_thresh=99.99 / 100) -> float:
     return margin
 
 
-def cluster(arrays_: list[np.ndarray]) -> list[np.ndarray]:
-    margin = min(calculate_margin(np.diff(a), p_thresh=0.9999) for a in arrays_)
+def cluster(arrays_: list[np.ndarray]) -> tuple[list[np.ndarray], dict[str, Any]]:
+    margin = min(calculate_margin(np.diff(np.sort(a)), p_thresh=0.9999) for a in arrays_)
 
     points = np.concatenate(arrays_)[:, None]
 
@@ -72,4 +75,4 @@ def cluster(arrays_: list[np.ndarray]) -> list[np.ndarray]:
         label_lst.append(labels[:n])
         labels = labels[n:]
 
-    return [np.array(a) for a in label_lst]
+    return [np.array(a) for a in label_lst], dict(margin=margin)
