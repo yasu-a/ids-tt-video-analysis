@@ -27,8 +27,8 @@ class __LabelJsonData(NamedTuple):
 
 class LabelJsonData(__LabelJsonData):
     def __new__(cls, markers, tags):
-        markers = {int(k): v for k, v in markers.items()}
-        tags = {int(k): v for k, v in tags.items()}
+        markers = {int(k): markers[k] for k in sorted(markers.keys())}
+        tags = {int(k): tags[k] for k in sorted(tags.keys())}
 
         if set(markers.keys()) != set(tags.keys()):
             logger.warning(f'Inconsistent frame indexes')

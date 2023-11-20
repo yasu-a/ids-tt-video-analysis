@@ -110,6 +110,7 @@ class VideoFrameLabelSampleSetMixin:
             )
             for lbl in labels
         ]
+        entries.sort(key=lambda e: e.frame_index_center)
 
         # create results and return them
         return FrameAggregationResult.from_entries(

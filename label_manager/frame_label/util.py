@@ -76,5 +76,6 @@ def cluster(arrays_: list[np.ndarray]) -> tuple[np.ndarray, dict[str, Any]]:
 
     # result: int, [4, N_TOTAL_ITEMS]
     result = np.stack([array_items, array_indexes, group_indexes, labels])
+    result = result[:, array_indexes.argsort()]
     additional = dict(margin=margin)
     return result, additional

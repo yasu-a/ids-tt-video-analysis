@@ -13,7 +13,7 @@ class VideoFrameLabelSampleMixin:
 
     @functools.cached_property
     def full_frame_index_array(self):
-        a = np.array(list(self.content.labels.markers.keys()))
+        a = np.array(sorted(self.content.labels.markers.keys()))
         a.setflags(write=False)
         return a
 
