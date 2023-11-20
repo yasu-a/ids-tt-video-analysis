@@ -1,4 +1,3 @@
-import collections
 import functools
 import os
 from typing import NamedTuple, Iterable
@@ -13,6 +12,7 @@ class FrameAggregationEntry(NamedTuple):
     frame_index_center: int
     n_total_sources: int
     n_sources: int
+    label_indexes: np.array  # int, [N_SOURCES]
 
     @property
     def reliability(self) -> float:
@@ -20,23 +20,26 @@ class FrameAggregationEntry(NamedTuple):
 
 
 class FrameAggregationResult(NamedTuple):
-    frame_index_center: np.ndarray
-    n_total_sources: np.ndarray
-    n_sources: np.ndarray
-    reliability: np.ndarray
+    frame_index_center: np.ndarray  # int, [N_LABELS]
+    n_total_sources: np.ndarray  # int, [N_LABELS]
+    n_sources: np.ndarray  # int, [N_LABELS]
+    reliability: np.ndarray  # float, [N_LABELS]
+    label_indexes: np.ndarray  # int, [N_LABELS, N_SOURCES]
+    margin: int  # float, []
 
     __dtypes = dict(
         frame_index_center=int,
         n_total_sources=int,
         n_sources=int,
-        reliability=float
+        reliability=float,
+        label_indexes=int,
     )
 
     @classmethod
-    def from_entries(cls, entries: Iterable[FrameAggregationEntry]):
+    def from_entries(cls, entries: Iterable[FrameAggregationEntry], **extract_arguments):
         names = cls._fields
-        var_dct = {}
-        for name in names:
+        var_dct = {} | extract_arguments
+        for name in cls.__dtypes.keys():
             value_lst = [getattr(e, name) for e in entries]
             a = np.array(value_lst).astype(cls.__dtypes[name])
             a.setflags(write=False)
@@ -62,7 +65,8 @@ class VideoFrameLabelSampleSetMixin:
 
     # TODO: implement me
 
-    def __aggregate(self, label_name: str = None):
+    @functools.cache
+    def aggregate(self, label_name: str = None, nan_value=-1):
         if label_name is not None and label_name not in self.frame_label_name_set:
             raise ValueError(f'Invalid label name {label_name!r}')
 
@@ -71,61 +75,48 @@ class VideoFrameLabelSampleSetMixin:
             sample_labels.frame_index_array(label_name)
             for sample_labels in self
         ]
-        cluster_labels, info = util.cluster(arrays)
 
-        # aggregate labels and associated frame indexes
-        cluster_label_and_fi_pair = (
-            (label, fi)
-            for a, a_labels in zip(arrays, cluster_labels)
-            for fi, label in zip(a, a_labels)
-        )
-        cluster_label_to_fi_set = collections.defaultdict(list)
-        for label, fi in cluster_label_and_fi_pair:
-            cluster_label_to_fi_set[label].append(fi)
+        # cl_result: int, [array_items, array_indexes, group_indexes, labels]
+        cl_result, info = util.cluster(arrays)
 
-        # remove noise entry with label of -1
-        cluster_label_to_fi_set.pop(-1)
+        # aggregate labels and associated array items
+        labels = np.sort(np.unique(cl_result[3]))
+        labels = labels[labels >= 0]  # remove noise items
+
+        label_agg = [
+            [
+                np.squeeze(cl_result[:, (cl_result[3, :] == lbl) & (cl_result[2, :] == gi)])
+                for gi in range(len(self))
+            ]
+            for lbl in labels
+        ]
+        label_agg = [
+            [
+                a if a.size else [nan_value] * cl_result.shape[0]
+                for a in a_label_agg
+            ]
+            for a_label_agg in label_agg
+        ]
+        # label_agg: int, [N_CLUSTERS, N_TOTAL_SOURCES, 4]
+        label_agg = np.stack(label_agg)
 
         # aggregate to entries
-        fi_center_to_entry = {}
-        for _, fi_set in cluster_label_to_fi_set.items():
-            fi_center = int(np.mean(fi_set))
-            entry = FrameAggregationEntry(
-                frame_index_center=fi_center,
-                n_total_sources=len(arrays),
-                n_sources=len(fi_set),
+        entries = [
+            FrameAggregationEntry(
+                frame_index_center=int(
+                    np.mean(label_agg[lbl, label_agg[lbl, :, 0] != nan_value, 0]).round(0)),
+                n_total_sources=len(self),
+                n_sources=np.count_nonzero(label_agg[lbl, label_agg[lbl, :, 0] != nan_value, 0]),
+                label_indexes=label_agg[lbl, :, 1],
             )
-            fi_center_to_entry[fi_center] = entry
+            for lbl in labels
+        ]
 
         # create results and return them
-        fi_center_array = np.array(sorted(fi_center_to_entry.keys()))
-        entries = [fi_center_to_entry[fi_center] for fi_center in fi_center_array]
-        used_margin = info['margin']
-        return (
-            fi_center_array,
-            FrameAggregationResult.from_entries(entries),
-            used_margin
+        return FrameAggregationResult.from_entries(
+            entries,
+            margin=info['margin']
         )
-
-    @functools.cache
-    def __aggregate_cached(self, label_name: str = None):
-        fi_center_array, result, used_margin = self.__aggregate(
-            label_name=label_name
-        )
-
-        # set array read-only
-        fi_center_array.setflags(write=False)
-
-        return fi_center_array, result, used_margin
-
-    def agg_frame_indexes(self, **kwargs) -> np.ndarray:
-        return self.__aggregate_cached(**kwargs)[0]  # fi_center_array
-
-    def agg_results(self, **kwargs) -> FrameAggregationResult:
-        return self.__aggregate_cached(**kwargs)[1]  # entries
-
-    def agg_difference_margin(self, **kwargs) -> float:
-        return self.__aggregate_cached(**kwargs)[2]  # used_margin
 
 
 class VideoFrameLabelSampleSet(VideoFrameLabelSampleSetMixin):

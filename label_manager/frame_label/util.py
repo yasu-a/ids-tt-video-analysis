@@ -32,47 +32,49 @@ def json_to_md5_digest(json_root):
     return hash_value
 
 
-def calculate_margin(diff: np.ndarray, p_thresh=99.99 / 100) -> float:
-    """
-    ほどんどの点がある距離以上の間隔を隔てて並ぶ１次元空間内の点の集合について，隣接する点どうしの
-    距離のサンプル`diff`を統計的に処理し，隣接する点どうしを`p_thresh`の確率で分離するための，
-    隣接する点どうしの距離が満たすべき最大の間隔を計算する。
-    :param diff: 隣接する点どうしの距離
-    :param p_thresh: 分離確率
-    :return: `p_thresh`の確率で隣接する点どうしを分離できる最小距離
-    """
-    assert np.all(diff >= 0), diff
+# def calculate_margin(diff: np.ndarray, p_thresh=99.99 / 100) -> float:
+#     """
+#     ほどんどの点がある距離以上の間隔を隔てて並ぶ１次元空間内の点の集合について，隣接する点どうしの
+#     距離のサンプル`diff`を統計的に処理し，隣接する点どうしを`p_thresh`の確率で分離するための，
+#     隣接する点どうしの距離が満たすべき最大の間隔を計算する。
+#     :param diff: 隣接する点どうしの距離
+#     :param p_thresh: 分離確率
+#     :return: `p_thresh`の確率で隣接する点どうしを分離できる最小距離
+#     """
+#     assert np.all(diff >= 0), diff
+#
+#     hist = np.zeros(diff.max(initial=0) + 1)
+#     x = np.arange(diff.max(initial=0) + 1)
+#     indexes, counts = np.unique(diff, return_counts=True)
+#     hist[indexes] = counts
+#
+#     from scipy.stats import gaussian_kde
+#     kernel = gaussian_kde(diff)
+#
+#     from scipy.special import ndtr
+#     cdf = np.array(
+#         list(ndtr(np.ravel(item - kernel.dataset) / kernel.factor).mean() for item in x)
+#     )
+#     thresh_index = x[cdf < 1 - p_thresh].max(initial=0)
+#     margin = thresh_index
+#
+#     return margin
 
-    hist = np.zeros(diff.max(initial=0) + 1)
-    x = np.arange(diff.max(initial=0) + 1)
-    indexes, counts = np.unique(diff, return_counts=True)
-    hist[indexes] = counts
 
-    from scipy.stats import gaussian_kde
-    kernel = gaussian_kde(diff)
+def cluster(arrays_: list[np.ndarray]) -> tuple[np.ndarray, dict[str, Any]]:
+    # margin = min(calculate_margin(np.diff(np.sort(a)), p_thresh=0.9999) for a in arrays_)
+    margin = 10
 
-    from scipy.special import ndtr
-    cdf = np.array(
-        list(ndtr(np.ravel(item - kernel.dataset) / kernel.factor).mean() for item in x)
-    )
-    thresh_index = x[cdf < 1 - p_thresh].max(initial=0)
-    margin = thresh_index
+    array_items = np.concatenate(arrays_)
+    array_indexes = np.concatenate([np.arange(len(a)) for a in arrays_])
+    group_indexes = np.concatenate([np.full(len(a), fill_value=gi) for gi, a in enumerate(arrays_)])
 
-    return margin
-
-
-def cluster(arrays_: list[np.ndarray]) -> tuple[list[np.ndarray], dict[str, Any]]:
-    margin = min(calculate_margin(np.diff(np.sort(a)), p_thresh=0.9999) for a in arrays_)
-
-    points = np.concatenate(arrays_)[:, None]
+    points = array_items[:, None]
 
     from sklearn.cluster import DBSCAN
     labels = DBSCAN(eps=margin, min_samples=2).fit_predict(points)
 
-    label_lst = []
-    for a in arrays_:
-        n = len(a)
-        label_lst.append(labels[:n])
-        labels = labels[n:]
-
-    return [np.array(a) for a in label_lst], dict(margin=margin)
+    # result: int, [4, N_TOTAL_ITEMS]
+    result = np.stack([array_items, array_indexes, group_indexes, labels])
+    additional = dict(margin=margin)
+    return result, additional

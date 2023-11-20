@@ -10,9 +10,9 @@ def main():
     pprint(ds['20230205_04_Narumoto_Harimoto'][0].content)
 
     for fn in s.frame_label_name_set:
-        fis = s.agg_frame_indexes(label_name=fn)
-        ars = s.agg_results(label_name=fn)
-        print(fn, fis[(ars.n_sources >= 2) & (ars.reliability >= 0.5)])
+        agg = s.aggregate(label_name=fn)
+        pprint(agg)
+        # print(fn, fis[(ars.n_sources >= 2) & (ars.reliability >= 0.5)])
 
     # pprint(cluster([groups[i]['Ready'] for i in range(len(groups))]))
 
