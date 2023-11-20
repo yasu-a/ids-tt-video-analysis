@@ -72,7 +72,7 @@ def cluster(arrays_: list[np.ndarray]) -> tuple[np.ndarray, dict[str, Any]]:
     points = array_items[:, None]
 
     from sklearn.cluster import DBSCAN
-    labels = DBSCAN(eps=margin, min_samples=2).fit_predict(points)
+    labels = DBSCAN(eps=margin, min_samples=1).fit_predict(points)
 
     # result: int, [4, N_TOTAL_ITEMS]
     result = np.stack([array_items, array_indexes, group_indexes, labels])
