@@ -37,7 +37,6 @@ class FrameAggregationResult(NamedTuple):
 
     @classmethod
     def from_entries(cls, entries: Iterable[FrameAggregationEntry], **extract_arguments):
-        names = cls._fields
         var_dct = {} | extract_arguments
         for name in cls.__dtypes.keys():
             value_lst = [getattr(e, name) for e in entries]
@@ -66,7 +65,7 @@ class VideoFrameLabelSampleSetMixin:
     # TODO: implement me
 
     @functools.cache
-    def aggregate(self, label_name: str = None, nan_value=-1):
+    def aggregate(self, label_name: str = None, nan_value=-1) -> FrameAggregationResult:
         if label_name is not None and label_name not in self.frame_label_name_set:
             raise ValueError(f'Invalid label name {label_name!r}')
 
