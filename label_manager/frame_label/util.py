@@ -10,7 +10,7 @@ import numpy as np
 def extract_video_name_from_json_path(path):
     _, name = os.path.split(path)
     name, _ = os.path.splitext(name)
-    m = re.match(r'\S+', name)
+    m = re.match(r'[\w.]+', name)
     if not m:
         raise ValueError('invalid json path', path)
     return m.group(0)
@@ -72,10 +72,10 @@ def cluster(arrays_: list[np.ndarray]) -> tuple[np.ndarray, dict[str, Any]]:
     points = array_items[:, None]
 
     from sklearn.cluster import DBSCAN
-    labels = DBSCAN(eps=margin, min_samples=1).fit_predict(points)
+    cluster_indexes = DBSCAN(eps=margin, min_samples=1).fit_predict(points)
 
     # result: int, [4, N_TOTAL_ITEMS]
-    result = np.stack([array_items, array_indexes, group_indexes, labels])
+    result = np.stack([array_items, array_indexes, group_indexes, cluster_indexes])
     result = result[:, array_indexes.argsort()]
     additional = dict(margin=margin)
     return result, additional

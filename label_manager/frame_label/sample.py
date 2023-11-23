@@ -35,7 +35,7 @@ class VideoFrameLabelSampleMixin:
 
     @functools.cached_property
     def frame_label_name_list(self) -> tuple[str, ...]:
-        return tuple(self.content.labels.markers.values())
+        return tuple(self.content.labels.markers[fi] for fi in self.full_frame_index_array)
 
     @functools.cached_property
     def frame_label_name_set(self) -> tuple[str, ...]:
@@ -48,6 +48,10 @@ class VideoFrameLabelSample(VideoFrameLabelSampleMixin):
 
         with open(json_path, 'r') as f:
             self.__content = LabelJson.from_json(json.load(f))
+
+    @property
+    def json_path(self):
+        return self.__json_path
 
     @property
     def content(self) -> LabelJson:
