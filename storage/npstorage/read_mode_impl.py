@@ -146,7 +146,7 @@ class ReadModeNumpyStorageImpl(
         return obj
 
     def get_array(self, array_name, fill_nan=np.nan) -> EntryOutputType:
-        obj = self.__get_array_raw(array_name)
+        obj = self.__get_array_raw(array_name).copy()
         status = self._array_memmap_status(array_name)
         obj[status == self.STATUS_INVALID] = fill_nan
         return obj
