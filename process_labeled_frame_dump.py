@@ -114,6 +114,7 @@ class ProcessStageMarkerImport(process.ProcessStage):
             with open(json_path, 'w') as f:
                 json.dump(json_data, f, sort_keys=True, ensure_ascii=True, indent=True)
 
+            # FIXME: create dump from source video
             with storage.create_instance(
                     domain='numpy_storage',
                     entity=video_name,
