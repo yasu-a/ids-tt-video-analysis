@@ -4,7 +4,11 @@ import time
 
 import imageio.v2 as iio
 
+import app_logging
+
 MAX_BACKLOG_FRAMES = 128
+
+logger = app_logging.create_logger(__name__)
 
 
 def _worker(q: mp.Queue, params: dict):
@@ -18,16 +22,20 @@ def _worker(q: mp.Queue, params: dict):
         quality=4
     )
 
+    logger.debug('Worker started')
+
     while True:
         if q.empty():
-            time.sleep(0.1)
+            time.sleep(0.01)
         else:
             frame = q.get(block=False)
             if frame is None:
                 break
             out.append_data(frame)
 
+    logger.debug('Closing worker ...')
     out.close()
+    logger.debug('Worker closed')
 
 
 class AsyncVideoFrameWriter:
@@ -45,10 +53,12 @@ class AsyncVideoFrameWriter:
         self.__q.put(frame)
 
     def __enter__(self):
+        logger.debug('Enter')
         self.__p.start()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        logger.debug('Exit')
         self.__q.put(None)
         self.__p.join()
         return False

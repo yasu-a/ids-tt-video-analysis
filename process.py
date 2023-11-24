@@ -3,6 +3,7 @@ import argparse
 
 class ProcessStage:
     NAME = None
+    ALIASES = None
 
     @classmethod
     def customize_parser(cls, parser: argparse.ArgumentParser) -> None:
@@ -24,6 +25,8 @@ def register_process_in_module(module):
         process_stage_type = value
         global _process_stage_registration
         _process_stage_registration[process_stage_type.NAME] = process_stage_type
+        for alias in process_stage_type.ALIASES or []:
+            _process_stage_registration[alias] = process_stage_type
 
 
 def _handler(process_stage_type):

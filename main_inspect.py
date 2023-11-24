@@ -84,6 +84,8 @@ class OperationContext(OperationBase):
 
 
 def index_validater(value):
+    if value.startswith('\\'):
+        value = value[1:]
     split = value.split(':')
 
     if len(split) == 1:
