@@ -63,9 +63,9 @@ python main.py vd
 - 位置引数
     - `video_name`：動画の名前
 - キーワード引数
-    - `-r`/`--resize-ratio`：リサイズ比率（0.0～1.0）
-    - `-s`/`--step`：このステップ数で飛ばし飛ばしフレームを書き出（>=3？）
-    - `-d`/`--diff-luminance-scale`/`--scale`：差分画像を何倍するか
+  - `-r`/`--resize-ratio`：リサイズ比率（0.0～1.0）
+  - `-s`/`--step`：このステップ数で飛ばし飛ばしフレームを書き出す（>=3？）
+  - `-d`/`--diff-luminance-scale`/`--scale`：差分画像を何倍するか
 
 ### ProcessStageExtractRectCLI [process_extract_rect_cli.py](./process_extract_rect_cli.py)
 
@@ -84,7 +84,7 @@ python main.py cli-rect
 - キーワード引数
     - （なし）
 
-### ProcessStageMarkerImport [process_labeled_frame_dump.py](./process_labeled_frame_dump.py) <font color="red">現在開発中</font>
+### ProcessStageLabeledFrameDump [process_labeled_frame_dump.py](./process_labeled_frame_dump.py) <font color="red">現在開発中</font>
 
 インポートしたラベルデータから【フレームデータ vs. ラベル】のデータセットを生成する。
 
@@ -123,8 +123,8 @@ python main.py mi
 次のデータから[util_extrema_feature_motion_detector.py](./util_extrema_feature_motion_detector.py)
 によるモーションデータを生成する。
 
-- `extract-rect-cli`の矩形データ
 - `video-dump`のフレームダンプ
+- `extract-rect-cli`の矩形データ
 
 ```shell
 python main.py primitive-motion-dump
@@ -135,6 +135,28 @@ python main.py pmd
 ```
 
 - 位置引数
-    - `video_name`：動画の名前
+  - `video_name`：動画の名前
 - キーワード引数
-    - （なし）
+  - （なし）
+
+### ProcessStagePrimitiveMotionVisualize [process_primitive_motion_visualize.py](./process_primitive_motion_visualize.py)
+
+次のデータからモーションベクトルを動画に重ねて可視化する。
+
+- `video-dump`のフレームダンプ
+- `primitive-motion-dump`のモーションダンプ
+
+```shell
+python main.py primitive-motion-visualize
+```
+
+```shell
+python main.py pmv
+```
+
+- 位置引数
+  - `video_name`：動画の名前
+- キーワード引数
+  - `--start`：開始フレーム
+  - `--stop`：終了フレーム
+  - `--out-path`：出力先
