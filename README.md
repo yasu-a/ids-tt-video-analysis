@@ -122,6 +122,9 @@ python main.py cli-rect
 
 ```shell
 python main.py labeled-frame-dump
+```
+
+```shell
 python main.py lfd
 ```
 
@@ -144,6 +147,27 @@ python main.py mi
 
 - 位置引数
     - `json_paths`：jsonパス（複数，globパターン可）
+- キーワード引数
+    - （なし）
+
+### ProcessStagePrimitiveMotionDump [process_primitive_motion_dump.py](./process_primitive_motion_dump.py)
+
+次のデータから[util_extrema_feature_motion_detector.py](./util_extrema_feature_motion_detector.py)
+によるモーションデータを生成する。
+
+- `extract-rect-cli`の矩形データ
+- `video-dump`のフレームダンプ
+
+```shell
+python main.py primitive-motion-dump
+```
+
+```shell
+python main.py pmd
+```
+
+- 位置引数
+    - `video_name`：動画の名前
 - キーワード引数
     - （なし）
 
