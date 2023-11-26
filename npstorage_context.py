@@ -9,6 +9,7 @@ class SNPEntryVideoFrame(NamedTuple):
     motion: np.ndarray
     original: np.ndarray
     timestamp: float
+    fi: np.ndarray  # frame-index, int
 
 
 snp.register_storage_context(
@@ -23,6 +24,9 @@ snp.register_storage_context(
             },
             'timestamp': {
                 'dtype': np.float32
+            },
+            'fi': {
+                'dtype': np.int32
             }
         },
         entry_named_tuple=SNPEntryVideoFrame
