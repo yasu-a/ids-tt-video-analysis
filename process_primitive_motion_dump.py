@@ -99,7 +99,7 @@ class ProcessStagePrimitiveMotionDump(process.ProcessStage):
                         motion_images=motions
                     )
 
-                    if detection_result.valid:
+                    if detection_result['valid']:
                         start_mat = detection_result.a.global_motion_center
                         end_mat = detection_result.b.global_motion_center
 
