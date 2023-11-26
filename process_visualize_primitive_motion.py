@@ -14,9 +14,9 @@ import storage.npstorage as snp
 logger = app_logging.create_logger(__name__)
 
 
-class ProcessStagePrimitiveMotionDump(process.ProcessStage):
-    NAME = 'visualize-primitive-motion'
-    ALIASES = 'vpm',
+class ProcessStagePrimitiveMotionVisualize(process.ProcessStage):
+    NAME = 'primitive-motion-visualize'
+    ALIASES = 'pmv',
 
     @classmethod
     def customize_parser(cls, parser: argparse.ArgumentParser) -> None:
