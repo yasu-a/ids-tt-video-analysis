@@ -1,5 +1,7 @@
 from typing import NamedTuple, Generic, TypeVar, Union
 
+import numpy as np
+
 from storage.routing import StoragePath
 from .impl import *
 from .impl_base import NumpyStorageImplBase
