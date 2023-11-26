@@ -1,7 +1,7 @@
 import functools
 import os
 from dataclasses import dataclass
-from typing import NamedTuple, Iterable, Callable
+from typing import NamedTuple, Iterable, Callable, Iterable
 
 import numpy as np
 
@@ -10,7 +10,7 @@ from .sample import VideoFrameLabelSample
 
 
 class FrameAggregationEntry(NamedTuple):
-    frame_index_center: int
+    fi_center: int
     n_total_sources: int
     n_sources: int
     cluster_indexes: np.array  # int, [N_SOURCES]
@@ -22,7 +22,7 @@ class FrameAggregationEntry(NamedTuple):
 
 
 class FrameAggregationResult(NamedTuple):
-    frame_index_center: np.ndarray  # int, [N_LABELS]
+    fi_center: np.ndarray  # int, [N_LABELS]
     n_total_sources: np.ndarray  # int, [N_LABELS]
     n_sources: np.ndarray  # int, [N_LABELS]
     reliability: np.ndarray  # float, [N_LABELS]
@@ -32,7 +32,7 @@ class FrameAggregationResult(NamedTuple):
 
     @property
     def n_frames(self):
-        return len(self.frame_index_center)
+        return len(self.fi_center)
 
     def __len__(self):
         return self.n_frames
@@ -66,7 +66,7 @@ class FrameAggregationResult(NamedTuple):
         return type(self)(**dct)
 
     __dtypes = dict(
-        frame_index_center=int,
+        fi_center=int,
         n_total_sources=int,
         n_sources=int,
         reliability=float,
@@ -119,7 +119,7 @@ class FrameAggregationResult(NamedTuple):
             self,
             label_order: list[int],
             predicate: Callable[[FrameAggregationEntry], bool] = None
-    ):
+    ) -> Iterable[GroupingResult]:
         predicate = predicate or (lambda *_: True)
 
         i = 0
@@ -165,15 +165,19 @@ class VideoFrameLabelSampleSetMixin:
     # TODO: implement me
 
     @functools.cache
-    def aggregate(self, label_name: str, nan_value=-1) -> FrameAggregationResult:
-        if label_name not in self.frame_label_name_list:
-            raise ValueError(f'Invalid label name {label_name!r}')
+    def aggregate(
+            self,
+            target_label_name: str,
+            nan_value=-1
+    ) -> FrameAggregationResult:
+        if target_label_name not in self.frame_label_name_list:
+            raise ValueError(f'Invalid label name {target_label_name!r}')
 
-        label_index = self.frame_label_name_list.index(label_name)
+        target_label_index = self.frame_label_name_list.index(target_label_name)
 
         # compute clusters
         arrays = [
-            sample_labels.frame_index_array(label_name)
+            sample_labels.fi_array_filtered_by_name(target_label_name)
             for sample_labels in self
         ]
 
@@ -204,16 +208,16 @@ class VideoFrameLabelSampleSetMixin:
         # aggregate to entries
         entries = [
             FrameAggregationEntry(
-                frame_index_center=int(
+                fi_center=int(
                     np.mean(label_agg[ci, label_agg[ci, :, 0] != nan_value, 0]).round(0)),
                 n_total_sources=len(self),
                 n_sources=np.count_nonzero(label_agg[ci, label_agg[ci, :, 0] != nan_value, 0]),
                 cluster_indexes=label_agg[ci, :, 1],
-                label_index=label_index
+                label_index=target_label_index
             )
             for ci in cluster_indexes
         ]
-        entries.sort(key=lambda e: e.frame_index_center)
+        entries.sort(key=lambda e: e.fi_center)
 
         # create results and return them
         return FrameAggregationResult.from_entries(
@@ -224,7 +228,7 @@ class VideoFrameLabelSampleSetMixin:
     @functools.cache
     def aggregate_full(self, nan_value=-1) -> FrameAggregationResult:
         mat = np.concatenate([
-            self.aggregate(label_name=label_name, nan_value=nan_value).to_numpy()
+            self.aggregate(target_label_name=label_name, nan_value=nan_value).to_numpy()
             for label_name in self.frame_label_name_list
         ], axis=1)
         mat = mat[:, mat[0, :].argsort()]
