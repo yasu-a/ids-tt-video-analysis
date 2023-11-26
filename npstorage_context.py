@@ -9,7 +9,7 @@ class SNPEntryVideoFrame(NamedTuple):
     motion: np.ndarray
     original: np.ndarray
     timestamp: float
-    fi: np.ndarray  # frame-index, int
+    fi: int  # frame-index, int
 
 
 snp.register_storage_context(
@@ -34,16 +34,16 @@ snp.register_storage_context(
 )
 
 
-class SNPEntryLocalPeakMaxMotion(NamedTuple):
-    start: float
-    end: float
-    frame_index: int
+class SNPEntryPrimitiveMotion(NamedTuple):
+    start: np.ndarray
+    end: np.ndarray
     timestamp: float
+    fi: int
 
 
 snp.register_storage_context(
     snp.StorageContext(
-        name='lpm_motion',
+        name='primitive_motion',
         struct_definition={
             'start': {
                 'dtype': np.float32
@@ -51,14 +51,14 @@ snp.register_storage_context(
             'end': {
                 'dtype': np.float32
             },
-            'frame_index': {
-                'dtype': np.int32
-            },
             'timestamp': {
                 'dtype': np.float32
+            },
+            'fi': {
+                'dtype': np.int32
             }
         },
-        entry_named_tuple=SNPEntryLocalPeakMaxMotion
+        entry_named_tuple=SNPEntryPrimitiveMotion
     )
 )
 
