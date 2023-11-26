@@ -1,0 +1,36 @@
+{
+  "constants": {
+    "SEQUENCE_LENGTH": "py::30"
+  },
+  "functions": {
+    "remove_nan_row": {
+      "args": [
+        "motion_matrix"
+      ],
+      "returns": "py::motion_matrix[~np.logical_or(np.isnan(motion_matrix), axis=1), :]"
+    }
+  },
+  "for-each-snp": {
+    "name": "primitive_motion",
+    "start": "py::SEQUENCE_LENGTH",
+    "stop": "py::primitive_motion.count"
+  },
+  "stages": [
+    {
+      "name": "retrieve-motion-dump",
+      "run-if": "py::i >= SEQUENCE_LENGTH",
+      "request": {
+        "motion_starts": "snp::primitive_motion,start,i-SEQUENCE_LENGTH:i",
+        "motion_ends": "snp::primitive_motion,end,i-SEQUENCE_LENGTH:i"
+      }
+    },
+    {
+      "name": "",
+      "run-if": "retrieve-motion-dump",
+      "request": {
+        "motion_starts": "py::remove_nan_row(motion_starts)",
+        "motion_ends": "py::remove_nan_row(motion_ends)"
+      }
+    }
+  ]
+}
