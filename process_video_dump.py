@@ -19,8 +19,8 @@ if __name__ == '__main__':
 
 
 class ProcessStageVideoDump(process.ProcessStage):
-    NAME = 'dump-video'
-    ALIASES = 'dv',
+    NAME = 'video-dump'
+    ALIASES = 'vd',
 
     @classmethod
     def customize_parser(cls, parser: argparse.ArgumentParser) -> None:

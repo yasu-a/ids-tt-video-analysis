@@ -85,8 +85,11 @@ python main.py <subcommand> <args> ...
 動画のフレームのオリジナル画像・差分画像をダンプする。
 
 ```shell
-python main.py dump-video
-python main.py dv
+python main.py video-dump
+```
+
+```shell
+python main.py vd
 ```
 
 - 位置引数
@@ -102,8 +105,10 @@ python main.py dv
 
 ```shell
 python main.py extract-rect-cli
+```
+
+```shell
 python main.py cli-rect
-python main.py erc
 ```
 
 - 位置引数
@@ -131,6 +136,9 @@ python main.py lfd
 
 ```shell
 python main.py marker-import
+```
+
+```shell
 python main.py mi
 ```
 
@@ -140,6 +148,7 @@ python main.py mi
     - （なし）
 
 ## 実装と処理結果の紹介
+
 ### Local-Maxによるキーポイント検出とモーション検出
 
 - [util_extrema_feature_motion_detector.py](./util_extrema_feature_motion_detector.py)

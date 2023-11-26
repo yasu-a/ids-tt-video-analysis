@@ -11,7 +11,7 @@ from config import config
 
 class ProcessStageExtractRectCLI(process.ProcessStage):
     NAME = 'extract-rect-cli'
-    ALIASES = 'erc', 'cli-rect'
+    ALIASES = 'cli-rect',
 
     @classmethod
     def customize_parser(cls, parser: argparse.ArgumentParser) -> None:
