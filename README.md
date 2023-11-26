@@ -32,7 +32,7 @@ Tチーム動画分析のリポジトリです。
 
 ![img](presen_materials/note_rnn_rally_detection/rally_detection_rnn.gif)
 
-# ~スクリプトの実行~
+# スクリプトの実行
 
 ## アプリ内の環境パスの編集
 
@@ -173,9 +173,9 @@ python main.py pmd
 - キーワード引数
     - （なし）
 
-## 実装と処理結果の紹介
+# 実装と処理結果の紹介
 
-### Local-Maxによるキーポイント検出とモーション検出
+## Local-Maxによるキーポイント検出とモーション検出
 
 - [util_extrema_feature_motion_detector.py](./util_extrema_feature_motion_detector.py)
 - [note_extrema_key_frame_motion_detection.py](notes/note_extrema_key_frame_motion_detection.py)
@@ -186,17 +186,17 @@ python main.py pmd
 Key-frame distance matrix
 ![img](presen_materials/local_max_feature_dist_mat.png)
 
-### Motion Centroid Correction
+## Motion Centroid Correction
 
 - [note_keyframe_center_correction.py](notes/note_keyframe_center_correction.py)
 
 ![img](presen_materials/motion_centroid_correction/compare.png)
 
-#### Correction Disabled
+### Correction Disabled
 
 ![img](presen_materials/motion_centroid_correction/out_without_motion_correction.gif)
 
-#### Correction Enabled
+### Correction Enabled
 
 手前の選手の頭に注目
 
@@ -204,19 +204,19 @@ Disabledではベクトルが暴れているがenabledでは暴れが抑えら�
 
 ![img](presen_materials/motion_centroid_correction/out_with_motion_correction.gif)
 
-#### Correction Disabled
+### Correction Disabled
 
 ![img](presen_materials/motion_centroid_correction/out_without_motion_correction.png)
 
-#### Correction Enabled
+### Correction Enabled
 
 ![img](presen_materials/motion_centroid_correction/out_with_motion_correction.png)
 
-### Random Forest によるモーションの分類
+## Random Forest によるモーションの分類
 
 https://github.com/yasu-a/ids-tt-video-analysis/blob/master/presen_materials/start_detection.mp4
 
-### LSTM によるモーションの分類
+## LSTM によるモーションの分類
 
 https://github.com/yasu-a/ids-tt-video-analysis/blob/master/presen_materials/note_rnn_rally_detection/rally_detection_rnn.mp4
 
