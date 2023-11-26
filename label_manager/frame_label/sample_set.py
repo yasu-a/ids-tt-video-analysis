@@ -1,7 +1,7 @@
-import collections
 import functools
 import os
-from typing import NamedTuple, Iterable
+from dataclasses import dataclass
+from typing import NamedTuple, Iterable, Callable, Iterable
 
 import numpy as np
 
@@ -10,9 +10,11 @@ from .sample import VideoFrameLabelSample
 
 
 class FrameAggregationEntry(NamedTuple):
-    frame_index_center: int
+    fi_center: int
     n_total_sources: int
     n_sources: int
+    cluster_indexes: np.array  # int, [N_SOURCES]
+    label_index: int
 
     @property
     def reliability(self) -> float:
@@ -20,28 +22,128 @@ class FrameAggregationEntry(NamedTuple):
 
 
 class FrameAggregationResult(NamedTuple):
-    frame_index_center: np.ndarray
-    n_total_sources: np.ndarray
-    n_sources: np.ndarray
-    reliability: np.ndarray
+    fi_center: np.ndarray  # int, [N_LABELS]
+    n_total_sources: np.ndarray  # int, [N_LABELS]
+    n_sources: np.ndarray  # int, [N_LABELS]
+    reliability: np.ndarray  # float, [N_LABELS]
+    cluster_indexes: np.ndarray  # int, [N_LABELS, N_SOURCES]
+    label_index: np.ndarray  # int, [N_LABELS]
+    margin: int  # int, []
+
+    @property
+    def n_frames(self):
+        return len(self.fi_center)
+
+    def __len__(self):
+        return self.n_frames
+
+    def __getitem__(self, i):
+        return FrameAggregationEntry(**{
+            name: None if getattr(self, name) is None else getattr(self, name)[i]
+            for name in FrameAggregationEntry._fields
+        })
+
+    def get(self, i, default=None):
+        if i < 0 or len(self) <= i:
+            return default
+        return self[i]
+
+    def filter(self, mask):
+        mask = np.array(mask)
+        if mask.dtype != np.bool_ or mask.ndim != 1 or len(mask) != self.n_frames:
+            raise ValueError('invalid mask')
+
+        dct = {
+            k: getattr(self, k)[mask, ...]
+            for k in self.__dtypes.keys()
+            if getattr(self, k) is not None
+        }
+
+        for k in self._fields:
+            if k not in dct:
+                dct[k] = getattr(self, k)
+
+        return type(self)(**dct)
 
     __dtypes = dict(
-        frame_index_center=int,
+        fi_center=int,
         n_total_sources=int,
         n_sources=int,
-        reliability=float
+        reliability=float,
+        cluster_indexes=int,
+        label_index=int
     )
 
+    __to_numpy_exclude = {'cluster_indexes'}
+
     @classmethod
-    def from_entries(cls, entries: Iterable[FrameAggregationEntry]):
-        names = cls._fields
-        var_dct = {}
-        for name in names:
+    def from_entries(cls, entries: Iterable[FrameAggregationEntry], **extract_arguments):
+        var_dct = {} | extract_arguments
+        for name in cls.__dtypes.keys():
             value_lst = [getattr(e, name) for e in entries]
             a = np.array(value_lst).astype(cls.__dtypes[name])
             a.setflags(write=False)
             var_dct[name] = a
         return cls(**var_dct)
+
+    def to_numpy(self) -> np.ndarray:
+        return np.stack([
+            (getattr(self, k) * (1 if tp == int else 100)).astype(int)
+            for k, tp in self.__dtypes.items()
+            if k not in self.__to_numpy_exclude
+        ])
+
+    @classmethod
+    def from_numpy(cls, mat):
+        dct = {
+            k: mat[i, :] if tp == int else (mat[i, :] / 100).astype(float)
+            for i, (k, tp) in enumerate(
+                (k, tp)
+                for k, tp in cls.__dtypes.items()
+                if k not in cls.__to_numpy_exclude
+            )
+        }
+
+        for k in cls._fields:
+            dct[k] = dct.get(k)
+
+        return cls(**dct)
+
+    @dataclass()
+    class GroupingResult:
+        prev_frame: FrameAggregationEntry
+        frames: tuple[FrameAggregationEntry, ...]
+        next_frame: FrameAggregationEntry
+
+    def extract_ordered_label_groups(
+            self,
+            label_order: list[int],
+            predicate: Callable[[FrameAggregationEntry], bool] = None
+    ) -> Iterable[GroupingResult]:
+        predicate = predicate or (lambda *_: True)
+
+        i = 0
+        j = None
+        while True:
+            current = self.get(i)
+            if current is None:
+                break
+
+            if j is None:
+                j = i
+
+            if label_order[i - j] == current.label_index and predicate(current):
+                if len(label_order) - 1 == i - j:
+                    yield self.GroupingResult(
+                        prev_frame=self.get(j - 1),
+                        frames=tuple(self[k] for k in range(j, i + 1)),
+                        next_frame=self.get(i + 1)
+                    )
+                    j = None
+            else:
+                j = None
+
+            i += 1
 
 
 class VideoFrameLabelSampleSetMixin:
@@ -52,7 +154,7 @@ class VideoFrameLabelSampleSetMixin:
         ...
 
     @functools.cached_property
-    def frame_label_name_set(self) -> tuple[str]:
+    def frame_label_name_list(self) -> tuple[str, ...]:
         s = sorted({
             label_name
             for sample_labels in self
@@ -62,70 +164,76 @@ class VideoFrameLabelSampleSetMixin:
 
     # TODO: implement me
 
-    def __aggregate(self, label_name: str = None):
-        if label_name is not None and label_name not in self.frame_label_name_set:
-            raise ValueError(f'Invalid label name {label_name!r}')
+    @functools.cache
+    def aggregate(
+            self,
+            target_label_name: str,
+            nan_value=-1
+    ) -> FrameAggregationResult:
+        if target_label_name not in self.frame_label_name_list:
+            raise ValueError(f'Invalid label name {target_label_name!r}')
+
+        target_label_index = self.frame_label_name_list.index(target_label_name)
 
         # compute clusters
         arrays = [
-            sample_labels.frame_index_array(label_name)
+            sample_labels.fi_array_filtered_by_name(target_label_name)
             for sample_labels in self
         ]
-        cluster_labels, info = util.cluster(arrays)
 
-        # aggregate labels and associated frame indexes
-        cluster_label_and_fi_pair = (
-            (label, fi)
-            for a, a_labels in zip(arrays, cluster_labels)
-            for fi, label in zip(a, a_labels)
-        )
-        cluster_label_to_fi_set = collections.defaultdict(list)
-        for label, fi in cluster_label_and_fi_pair:
-            cluster_label_to_fi_set[label].append(fi)
+        # cl_result: int, [array_items, array_indexes, group_indexes, cluster_indexes]
+        cl_result, info = util.cluster(arrays)
 
-        # remove noise entry with label of -1
-        cluster_label_to_fi_set.pop(-1)
+        # aggregate labels and associated array items
+        cluster_indexes = np.sort(np.unique(cl_result[3]))
+        cluster_indexes = cluster_indexes[cluster_indexes >= 0]  # remove noise items
+
+        label_agg = [
+            [
+                np.squeeze(cl_result[:, (cl_result[3, :] == lbl) & (cl_result[2, :] == gi)])
+                for gi in range(len(self))
+            ]
+            for lbl in cluster_indexes
+        ]
+        label_agg = [
+            [
+                a if a.size else [nan_value] * cl_result.shape[0]
+                for a in a_label_agg
+            ]
+            for a_label_agg in label_agg
+        ]
+        # label_agg: int, [N_CLUSTERS, N_TOTAL_SOURCES, 4]
+        label_agg = np.stack(label_agg)
 
         # aggregate to entries
-        fi_center_to_entry = {}
-        for _, fi_set in cluster_label_to_fi_set.items():
-            fi_center = int(np.mean(fi_set))
-            entry = FrameAggregationEntry(
-                frame_index_center=fi_center,
-                n_total_sources=len(arrays),
-                n_sources=len(fi_set),
+        entries = [
+            FrameAggregationEntry(
+                fi_center=int(
+                    np.mean(label_agg[ci, label_agg[ci, :, 0] != nan_value, 0]).round(0)),
+                n_total_sources=len(self),
+                n_sources=np.count_nonzero(label_agg[ci, label_agg[ci, :, 0] != nan_value, 0]),
+                cluster_indexes=label_agg[ci, :, 1],
+                label_index=target_label_index
             )
-            fi_center_to_entry[fi_center] = entry
+            for ci in cluster_indexes
+        ]
+        entries.sort(key=lambda e: e.fi_center)
 
         # create results and return them
-        fi_center_array = np.array(sorted(fi_center_to_entry.keys()))
-        entries = [fi_center_to_entry[fi_center] for fi_center in fi_center_array]
-        used_margin = info['margin']
-        return (
-            fi_center_array,
-            FrameAggregationResult.from_entries(entries),
-            used_margin
+        return FrameAggregationResult.from_entries(
+            entries,
+            margin=info['margin']
         )
 
     @functools.cache
-    def __aggregate_cached(self, label_name: str = None):
-        fi_center_array, result, used_margin = self.__aggregate(
-            label_name=label_name
-        )
+    def aggregate_full(self, nan_value=-1) -> FrameAggregationResult:
+        mat = np.concatenate([
+            self.aggregate(target_label_name=label_name, nan_value=nan_value).to_numpy()
+            for label_name in self.frame_label_name_list
+        ], axis=1)
+        mat = mat[:, mat[0, :].argsort()]
 
-        # set array read-only
-        fi_center_array.setflags(write=False)
-
-        return fi_center_array, result, used_margin
-
-    def agg_frame_indexes(self, **kwargs) -> np.ndarray:
-        return self.__aggregate_cached(**kwargs)[0]  # fi_center_array
-
-    def agg_results(self, **kwargs) -> FrameAggregationResult:
-        return self.__aggregate_cached(**kwargs)[1]  # entries
-
-    def agg_difference_margin(self, **kwargs) -> float:
-        return self.__aggregate_cached(**kwargs)[2]  # used_margin
+        return FrameAggregationResult.from_numpy(mat)
 
 
 class VideoFrameLabelSampleSet(VideoFrameLabelSampleSetMixin):

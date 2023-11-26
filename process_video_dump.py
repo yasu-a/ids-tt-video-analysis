@@ -19,8 +19,8 @@ if __name__ == '__main__':
 
 
 class ProcessStageVideoDump(process.ProcessStage):
-    NAME = 'dump-video'
-    ALIASES = 'dv',
+    NAME = 'video-dump'
+    ALIASES = 'vd',
 
     @classmethod
     def customize_parser(cls, parser: argparse.ArgumentParser) -> None:
@@ -54,11 +54,11 @@ class ProcessStageVideoDump(process.ProcessStage):
         pattern = np.zeros(self.__step, dtype=int)
         pattern[:3] = [1, 2, 3]
 
-        for index in range(self.__frame_count):
-            flag = pattern[index % self.__step]
-            yield index, flag
+        for fi in range(self.__frame_count):
+            flag = pattern[fi % self.__step]
+            yield fi, flag
 
-    def _iter_frames(self, index_flag_pairs) -> tuple:
+    def _iter_frames(self, fi_flag_pair_lst) -> tuple:  # fi, ts, stack
         def retrieve_frame():
             _, image = self.__cap.retrieve()
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -66,10 +66,10 @@ class ProcessStageVideoDump(process.ProcessStage):
 
         self.__cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
-        bar = tqdm(index_flag_pairs)
+        bar = tqdm(fi_flag_pair_lst)
         stack = []
         yield_count = 0
-        for index, flag in bar:
+        for fi, flag in bar:
             if not self.__cap.grab():
                 break
 
@@ -79,7 +79,7 @@ class ProcessStageVideoDump(process.ProcessStage):
             if len(stack) == flag - 1:
                 stack.append(retrieve_frame())
                 if flag == 3:
-                    yield ts, tuple(stack)
+                    yield fi, ts, tuple(stack)
                     stack.clear()
 
     @classmethod
@@ -89,8 +89,8 @@ class ProcessStageVideoDump(process.ProcessStage):
     def run(self):
         self._init_video_capture()
 
-        index_flag_pairs = list(self._iter_flags())
-        n_output = int(sum(f == 3 for idx, f in index_flag_pairs))
+        fi_flag_pair_lst = list(self._iter_flags())
+        n_output = int(sum(flag == 3 for idx, flag in fi_flag_pair_lst))
 
         with storage.create_instance(
                 domain='numpy_storage',
@@ -101,7 +101,8 @@ class ProcessStageVideoDump(process.ProcessStage):
         ) as snp_video_frame:
             assert isinstance(snp_video_frame, snp.NumpyStorage)
 
-            for j, (timestamp, images) in enumerate(self._iter_frames(index_flag_pairs)):
+            for j, (fi, timestamp, images) \
+                    in enumerate(self._iter_frames(fi_flag_pair_lst)):
                 images = list(images)
 
                 # preprocess
@@ -110,6 +111,7 @@ class ProcessStageVideoDump(process.ProcessStage):
                     im = cv2.resize(im, None, fx=self.__resize_ratio, fy=self.__resize_ratio)
                     im = im.astype(np.float32)
                     im /= 256.0
+                    # noinspection PyArgumentList
                     assert im.max() < 1.0, im.max()
                     images[i] = im
 
@@ -127,7 +129,8 @@ class ProcessStageVideoDump(process.ProcessStage):
                 snp_video_frame[j] = snp_context.SNPEntryVideoFrame(
                     original=self._to_uint8(original),
                     motion=self._to_uint8(motion),
-                    timestamp=timestamp
+                    timestamp=timestamp,
+                    fi=fi
                 )
 
 

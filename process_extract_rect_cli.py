@@ -2,7 +2,6 @@ import argparse
 import collections
 import os
 
-import cv2
 import numpy as np
 
 import process
@@ -12,7 +11,7 @@ from config import config
 
 class ProcessStageExtractRectCLI(process.ProcessStage):
     NAME = 'extract-rect-cli'
-    ALIASES = 'erc', 'cli-rect'
+    ALIASES = 'cli-rect',
 
     @classmethod
     def customize_parser(cls, parser: argparse.ArgumentParser) -> None:
@@ -36,10 +35,10 @@ class ProcessStageExtractRectCLI(process.ProcessStage):
 
         self.__preview_enabled = False
 
-    def _get_size(self) -> tuple[int, int]:
-        cap = cv2.VideoCapture(self.__video_path)
-        vh, vw = cap.get(cv2.CAP_PROP_FRAME_HEIGHT), cap.get(cv2.CAP_PROP_FRAME_WIDTH)
-        return vh, vw
+    # def _get_size(self) -> tuple[float, float]:
+    #     cap = cv2.VideoCapture(self.__video_path)
+    #     vh, vw = cap.get(cv2.CAP_PROP_FRAME_HEIGHT), cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+    #     return vh, vw
 
     def _generate_rect(self):
         try:
@@ -94,12 +93,8 @@ class ProcessStageExtractRectCLI(process.ProcessStage):
         # for i in range(6):
         #     self.__vals[self.__desc[i][0]] = a[i]
 
-        vh, vw = self._get_size()
-
         print(f'{self.__video_name=}')
         print(f'{self.__video_path=}')
-
-        print(f'{vw=}, {vh=}')
 
         print('Take a screen shot of a full frame and measure values below.')
         print('Fill all values and enter `done`.')

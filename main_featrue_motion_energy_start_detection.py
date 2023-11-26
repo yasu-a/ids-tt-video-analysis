@@ -34,7 +34,7 @@ def create_rect():
     return r
 
 
-if __name__ == '__main__':
+def main():
     rect = create_rect()
 
     with dataset.MotionStorage(
@@ -116,11 +116,9 @@ if __name__ == '__main__':
                 fig.tight_layout()
                 fig.show()
 
-
             plot_figure()
 
         print({k: v.shape for k, v in features.items()})
-
 
         def extract_motion_energy(src):
             assert src.ndim == 2, src.shape
@@ -141,7 +139,6 @@ if __name__ == '__main__':
 
             motion_energy = np.square(diff)
             return motion_energy
-
 
         FEATURE_BLOCK_SIZE = 3
         assert FEATURE_BLOCK_SIZE % 2 == 1 and FEATURE_BLOCK_SIZE >= 3
@@ -169,14 +166,12 @@ if __name__ == '__main__':
                  i > j]
         print(names)
 
-
         def block_diff_feature(blocks):
             assert blocks.ndim == 1, blocks.shape
             n = blocks.size
             lst = [blocks[i] - blocks[j] for i in range(n) for j in range(n) if i > j]
 
             return np.array(lst)
-
 
         print(mean.shape)
         diff_features = np.apply_along_axis(block_diff_feature, 2, mean)
@@ -197,7 +192,6 @@ if __name__ == '__main__':
 
         Y_DATA_MARGIN = 10
 
-
         def create_y_data() -> np.ndarray:
             assert rm.ndim == 1, rm.shape
             index_delta = np.arange(rm.size)[:, None] - index_rally_begin
@@ -216,7 +210,6 @@ if __name__ == '__main__':
             # fig.show()
 
             return y
-
 
         x = features
         y = create_y_data()
@@ -270,14 +263,12 @@ if __name__ == '__main__':
         axes[0].imshow(np.tile(rally_mask[:, None], 30).T)
         axes[1].imshow(np.tile(y_pred[:, None], 30).T)
 
-
         def ax_edit_ticklabel(ax):
             ax.set_xlim(0, timestamp.size - 1)
             ts_max = (timestamp.size - 1) // 100 * 100
             ax.set_xticks(np.linspace(0, ts_max, ts_max // 100))
             ax.set_xticklabels(timestamp[ax.get_xticks().astype(int)].round(1))
             ax.tick_params(axis="x", labelrotation=90)
-
 
         ax_edit_ticklabel(axes[0])
 
@@ -309,3 +300,7 @@ if __name__ == '__main__':
                            save_all=True, append_images=images[1:], optimize=False,
                            duration=1 / fps * STEP / FAST,
                            loop=0)
+
+
+if __name__ == '__main__':
+    main()

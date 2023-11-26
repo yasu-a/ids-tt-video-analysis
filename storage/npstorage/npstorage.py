@@ -1,5 +1,7 @@
 from typing import NamedTuple, Generic, TypeVar, Union
 
+import numpy as np
+
 from storage.routing import StoragePath
 from .impl import *
 from .impl_base import NumpyStorageImplBase
@@ -37,8 +39,8 @@ class NumpyStorage(Generic[EntryNamedTupleGeneric]):
     def get_entry(self, i: int) -> EntryNamedTupleGeneric:
         return self.__entry_nt(**self.__impl.get_entry(i))
 
-    def get_array(self, array_name) -> EntryOutputType:
-        return self.__impl.get_array(array_name)
+    def get_array(self, array_name, fill_nan=np.nan) -> EntryOutputType:
+        return self.__impl.get_array(array_name, fill_nan=fill_nan)
 
     def get_status(self, array_name) -> EntryOutputType:
         return self.__impl.get_status(array_name)

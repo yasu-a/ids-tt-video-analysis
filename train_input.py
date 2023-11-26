@@ -1,3 +1,4 @@
+import functools
 import json
 
 import numpy as np
@@ -29,12 +30,26 @@ def load_rally_mask(path, timestamps):
     return train_input_df, rally_mask
 
 
-def load_rect(video_name=None):
-    video_name = dataset.coerce_video_name(video_name)
+@functools.cache
+def _load_rect_float(video_name):
     with open('label_data/rect.json', 'r') as f:
         json_root = json.load(f)
     rect_lst = json_root.get(video_name)
-    rect_lst = slice(rect_lst[0], rect_lst[1]), slice(rect_lst[2], rect_lst[3])
+    return rect_lst
+
+
+def load_rect(video_name, height, width):
+    rect_lst = _load_rect_float(video_name)
+    rect_lst = (
+        slice(
+            int(rect_lst[0] * height),
+            int(rect_lst[1] * height)
+        ),
+        slice(
+            int(rect_lst[2] * width),
+            int(rect_lst[3] * width)
+        )
+    )
     return rect_lst
 
 
@@ -46,8 +61,3 @@ def update_rect(video_name, rect):
     json_root[video_name] = rect_lst
     with open('label_data/rect.json', 'w') as f:
         json.dump(json_root, f, indent=2, sort_keys=True)
-
-
-if __name__ == '__main__':
-    df = load('label_data/iDSTTVideoAnalysis_20230205_04_Narumoto_Harimoto.csv')
-    print(df)
