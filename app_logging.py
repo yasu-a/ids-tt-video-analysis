@@ -40,12 +40,12 @@ _default_log_level = INFO
 
 def create_logger(name) -> Logger:
     logger = getLogger(name)
-    logger.propagate = False
-    syslog = StreamHandler()
-    formatter = CustomFormatter('%(asctime)s [%(levelname)s:%(name)s] %(message)s')
-    syslog.setFormatter(formatter)
-    logger.setLevel(_default_log_level)
-    logger.addHandler(syslog)
+    if not logger.hasHandlers():
+        logger.setLevel(_default_log_level)
+        handler = StreamHandler()
+        formatter = CustomFormatter('%(asctime)s [%(levelname)s:%(name)s] %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
 
     global _loggers
     _loggers.append(logger)
