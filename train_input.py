@@ -40,14 +40,18 @@ def _load_rect_float(video_name):
 
 def load_rect(video_name, height, width):
     rect_lst = _load_rect_float(video_name)
+
+    rect_width = rect_lst[3] - rect_lst[2]
+    rect_x_expand = rect_width / 2
+
     rect_lst = (
         slice(
             int(rect_lst[0] * height),
             int(rect_lst[1] * height)
         ),
         slice(
-            int(rect_lst[2] * width),
-            int(rect_lst[3] * width)
+            int((rect_lst[2] - rect_x_expand) * width),
+            int((rect_lst[3] + rect_x_expand) * width)
         )
     )
     return rect_lst
