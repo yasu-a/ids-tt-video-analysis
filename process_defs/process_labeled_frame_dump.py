@@ -23,11 +23,12 @@ class ProcessStageLabeledFrameDump(process.ProcessStage):
 
     @classmethod
     def customize_parser(cls, parser: argparse.ArgumentParser) -> None:
-        raise NotImplementedError()
         parser.add_argument('video_names', type=str, nargs='+')
         parser.add_argument('--out', type=str, required=True)
 
     def __init__(self, video_names: list[str], out: str):
+        raise NotImplementedError()
+
         self.__fac = VideoFrameLabelFactory.create_instance()
 
         real_video_names = []

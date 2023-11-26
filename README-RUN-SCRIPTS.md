@@ -48,7 +48,7 @@
 python main.py <subcommand> <args> ...
 ```
 
-### ProcessStageVideoDump [process_video_dump.py](./process_video_dump.py)
+### ProcessStageVideoDump [process_video_dump.py](process_defs/process_video_dump.py)
 
 動画のフレームのオリジナル画像・差分画像をダンプする。
 
@@ -67,7 +67,7 @@ python main.py vd
   - `-s`/`--step`：このステップ数で飛ばし飛ばしフレームを書き出す（>=3？）
   - `-d`/`--diff-luminance-scale`/`--scale`：差分画像を何倍するか
 
-### ProcessStageExtractRectCLI [process_extract_rect_cli.py](./process_extract_rect_cli.py)
+### ProcessStageExtractRectCLI [process_extract_rect_cli.py](process_defs/process_extract_rect_cli.py)
 
 動画のモーション抽出を行う矩形領域を設定するための対話プログラムを起動する。
 
@@ -84,7 +84,7 @@ python main.py cli-rect
 - キーワード引数
     - （なし）
 
-### ProcessStageLabeledFrameDump [process_labeled_frame_dump.py](./process_labeled_frame_dump.py) <font color="red">現在開発中</font>
+### ProcessStageLabeledFrameDump [process_labeled_frame_dump.py](process_defs/process_labeled_frame_dump.py) <font color="red">現在開発中</font>
 
 インポートしたラベルデータから【フレームデータ vs. ラベル】のデータセットを生成する。
 
@@ -101,7 +101,7 @@ python main.py lfd
 - キーワード引数
     - （不明）
 
-### ProcessStageMarkerImport [process_marker_import.py](./process_marker_import.py)
+### ProcessStageMarkerImport [process_marker_import.py](process_defs/process_marker_import.py)
 
 [GitHub:ids-tt-video-marker](https://github.com/yasu-a/ids-tt-video-marker)による動画のラベルデータをインポートする。
 
@@ -118,7 +118,7 @@ python main.py mi
 - キーワード引数
     - （なし）
 
-### ProcessStagePrimitiveMotionDump [process_primitive_motion_dump.py](./process_primitive_motion_dump.py)
+### ProcessStagePrimitiveMotionDump [process_primitive_motion_dump.py](process_defs/process_primitive_motion_dump.py)
 
 次のデータから[util_extrema_feature_motion_detector.py](./util_extrema_feature_motion_detector.py)
 によるモーションデータを生成する。
@@ -139,7 +139,7 @@ python main.py pmd
 - キーワード引数
   - （なし）
 
-### ProcessStagePrimitiveMotionVisualize [process_primitive_motion_visualize.py](./process_primitive_motion_visualize.py)
+### ProcessStagePrimitiveMotionVisualize [process_primitive_motion_visualize.py](process_defs/process_primitive_motion_visualize.py)
 
 次のデータからモーションベクトルを動画に重ねて可視化する。
 

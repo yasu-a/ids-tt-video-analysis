@@ -1,17 +1,6 @@
 import argparse
 
-
-class ProcessStage:
-    NAME = None
-    ALIASES = None
-
-    @classmethod
-    def customize_parser(cls, parser: argparse.ArgumentParser) -> None:
-        raise NotImplementedError()
-
-    def run(self):
-        raise NotImplementedError()
-
+from ._stage import ProcessStage
 
 _process_stage_registration = {}
 

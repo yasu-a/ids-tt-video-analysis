@@ -1,15 +1,8 @@
-import process_extract_rect_cli
-import process_marker_import
-import process_primitive_motion_dump
-import process_primitive_motion_visualize
-import process_video_dump
+import process_defs
 from process import register_process_in_module, run
 
-register_process_in_module(process_video_dump)
-register_process_in_module(process_extract_rect_cli)
-register_process_in_module(process_marker_import)
-register_process_in_module(process_primitive_motion_dump)
-register_process_in_module(process_primitive_motion_visualize)
+for module in process_defs.process_stage_modules:
+    register_process_in_module(module)
 
 if __name__ == '__main__':
     run()
