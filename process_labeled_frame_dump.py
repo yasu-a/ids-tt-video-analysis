@@ -17,12 +17,13 @@ from label_manager.frame_label.factory import VideoFrameLabelFactory
 from label_manager.frame_label.sample_set import FrameAggregationResult
 
 
-class ProcessStageMarkerImport(process.ProcessStage):
+class ProcessStageLabeledFrameDump(process.ProcessStage):
     NAME = 'labeled-frame-dump'
     ALIASES = 'lfd',
 
     @classmethod
     def customize_parser(cls, parser: argparse.ArgumentParser) -> None:
+        raise NotImplementedError()
         parser.add_argument('video_names', type=str, nargs='+')
         parser.add_argument('--out', type=str, required=True)
 
@@ -63,7 +64,7 @@ class ProcessStageMarkerImport(process.ProcessStage):
             frame_groups = list(
                 agg.extract_ordered_label_groups(
                     label_order=[
-                        sample_set.frame_label_name_list.index(ln)
+                        sample_set.label_array.index(ln)
                         for ln in ['Stay', 'Play', 'Ready']
                     ],
                     predicate=lambda entry: entry.reliability > 0.5
@@ -83,15 +84,15 @@ class ProcessStageMarkerImport(process.ProcessStage):
             for i, group in enumerate(frame_groups):
                 fi_start = int(
                     np.mean([
-                        group.prev_frame.frame_index_center if group.prev_frame else 0,
-                        group.frames[0].frame_index_center
+                        group.prev_frame.fi_center if group.prev_frame else 0,
+                        group.frames[0].fi_center
                     ])
                 )
 
                 fi_end = int(
                     np.mean([
-                        group.frames[-1].frame_index_center,
-                        group.next_frame.frame_index_center if group.next_frame else frame_count - 1
+                        group.frames[-1].fi_center,
+                        group.next_frame.fi_center if group.next_frame else frame_count - 1
                     ])
                 )
 
@@ -100,9 +101,9 @@ class ProcessStageMarkerImport(process.ProcessStage):
                     i=i,
                     fi_start=fi_start,
                     fi_end=fi_end,
-                    label_stay=group.frames[0].frame_index_center,
-                    label_play=group.frames[1].frame_index_center,
-                    label_ready=group.frames[2].frame_index_center,
+                    label_stay=group.frames[0].fi_center,
+                    label_play=group.frames[1].fi_center,
+                    label_ready=group.frames[2].fi_center,
                     dump_file_name=dump_file_name
                 )
                 frame_json_data = {
