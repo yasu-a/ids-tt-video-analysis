@@ -5,26 +5,26 @@ Tチーム動画分析のリポジトリです。
 # 現時点でのプロセス
 
 1. 動画からフレームを抽出
-   - はじめは`decord`でやっていた
-   - `cv2.VideoCapture`でのフレーム抽出に変更
-      - `cv2.VideoCapture`でも`cap.grab`でフレームを読み飛ばすことで高速化できることが判明
-   - (a)...抽出したRGBフレーム画像
+    - はじめは`decord`でやっていた
+    - `cv2.VideoCapture`でのフレーム抽出に変更
+        - `cv2.VideoCapture`でも`cap.grab`でフレームを読み飛ばすことで高速化できることが判明
+    - (a)...抽出したRGBフレーム画像
 2. フレーム画像(a)どうしの差分抽出
-   - (b)...(a)どうしの差分フレーム（=(a)の１階微分）
-   - フレームの差分とその次のフレームの差分の幾何平均によりノイズを取り除けることが判明
-   - (c)...差分(b)どうしの幾何平均（≒(a)の２階微分）
+    - (b)...(a)どうしの差分フレーム（=(a)の１階微分）
+    - フレームの差分とその次のフレームの差分の幾何平均によりノイズを取り除けることが判明
+    - (c)...差分(b)どうしの幾何平均（≒(a)の２階微分）
 3. モーション抽出
-   - ノイズ処理後の差分(c)の輝度極大点をキーポイントとして使用（SIFTなどのキーポイントに相当）
-   - (d)...(c)から抽出したキーポイント周辺の(a)におけるキー局所領域（SIFTなどのディスクリプタに相当）
-   - 隣り合う2つの(c)によるキー領域(d)を全数比較し、両方向からマッチしたキーポイントの差分をモーションとして抽出
-   - (e)...抽出したモーション
+    - ノイズ処理後の差分(c)の輝度極大点をキーポイントとして使用（SIFTなどのキーポイントに相当）
+    - (d)...(c)から抽出したキーポイント周辺の(a)におけるキー局所領域（SIFTなどのディスクリプタに相当）
+    - 隣り合う2つの(c)によるキー領域(d)を全数比較し、両方向からマッチしたキーポイントの差分をモーションとして抽出
+    - (e)...抽出したモーション
 4. 特徴量抽出
-   - (f1)...モーション(e)のx軸方向成分の平均を特徴量にする
-   - (f2)...特徴量を時系列分割し、互いの分割の差を生成し、特徴量追加
+    - (f1)...モーション(e)のx軸方向成分の平均を特徴量にする
+    - (f2)...特徴量を時系列分割し、互いの分割の差を生成し、特徴量追加
 5. 機械学習
-   - (m1)...特徴量(f2)をランダムフォレストで学習＆推定
-   - (m2)...特徴量(f1)をLSTMで学習＆推定
-   - 予測の良さ（まだ定量化できていない）：(m2)>(m1)
+    - (m1)...特徴量(f2)をランダムフォレストで学習＆推定
+    - (m2)...特徴量(f1)をLSTMで学習＆推定
+    - 予測の良さ（まだ定量化できていない）：(m2)>(m1)
 
 ![img](presen_materials/slides/flow.png)
 
@@ -32,43 +32,115 @@ Tチーム動画分析のリポジトリです。
 
 # スクリプトの実行
 
-<!-- TODO: adapt to new-style config -->
+## アプリ内の環境パスの編集
 
-1. この階層に`config.py`という名前のファイルを作る
-2. 以下の`if`（もしくは`elif`）ブロックを作る（作らなくても可）
+アプリ内環境パスは[./dataset_config.json](./dataset_config.json)に記述します。
 
-   - ＜デバイス名＞は`DESKTOP-O1A234B`のようなパソコンの名前
+データ構造：
 
-   ```python
-   import os
-   import platform
-   
-   device_name = platform.node()
-   
-   if device_name == '＜デバイス名＞':
-       pass
-   ```
+```json
+{
+  "env-config": {
+    "<デバイス名1>": {
+      "項目1": "値",
+      "項目2": "値",
+      "項目3": "値",
+      "...": "..."
+    },
+    "<デバイス名2>": {
+      "...": "..."
+    },
+    "<デバイス名3>": {
+      "...": "..."
+    },
+    "...": {
+      "...": "..."
+    }
+  }
+}
+```
 
-3. 以下の定数を定義して設定する
+### 必須項目
 
-|     VARIABLE NAME      |                                   DESCRIPTION                                    |                        EXAMPLE                         |
-|:----------------------:|:--------------------------------------------------------------------------------:|:------------------------------------------------------:|
-|    `VIDEO_DIR_PATH`    |               Path to the directory containing the original video                | `os.path.expanduser(r'~/Desktop/idsttvideos/singles')` |
-| `FRAME_DUMP_DIR_PATH`  |    Dump destination of [main_process_video_dump.py](./process_video_dump.py)     |        `r'C:\idstt\iDSTTVideoFrameDump\frames'`        |
-| `MOTION_DUMP_DIR_PATH` | Dump destination of [main_process_motion_dump.py](./main_process_motion_dump.py) |       `r'C:\idstt\iDSTTVideoFrameDump\motions'`        |
-|  `DEFAULT_VIDEO_NAME`  |  Default video name to be used in each process when no video names is specified  |           `'20230205_04_Narumoto_Harimoto'`            |
+- `data-location`：ダンプデータやキャッシュデータを保存・参照する場所
+- `debug-data-location`:デバッグ時に参照されることがある`data-location`を汚染しないための別の場所
+- `video-location`：動画を参照する場所
+- `default-video-name`：デバッグ時に参照されることがある動画の名前
 
-# スクリプトの概要
+### 特殊項目・ディレクティブ
 
-|                             NAME                             |      DESCRIPTION       |
-|:------------------------------------------------------------:|:----------------------:|
-|       [Module storage/npstorage](./storage/npstorage)        |    `np.memmap`のI/O     |
-|    [main_process_video_dump.py](./process_video_dump.py)     |  動画からフレームと差分フレームを生成する  |
-| [main_process_motion_dump.py](./main_process_motion_dump.py) | 差分フレームからモーションベクトルを生成する |
-|                    [train](./label_data)                     |         教師データ          |
-|              [train_input.py](./train_input.py)              |        教師データI/O        |
+- `.comment`：このキーに対応する値はコメントとして無視される
+- `.inherit`：このキーに対応するデバイス名の構成を継承する
 
-# Local-Maxによるキーポイント検出とモーション検出
+## コマンドラインの実行
+
+このフォルダを`cd`としてコマンドを実行する。
+
+```shell
+python main.py <subcommand> <args> ...
+```
+
+### ProcessStageVideoDump [process_video_dump.py](./process_video_dump.py)
+
+動画のフレームのオリジナル画像・差分画像をダンプする。
+
+```shell
+python main.py dump-video
+python main.py dv
+```
+
+- 位置引数
+    - `video_name`：動画の名前
+- キーワード引数
+    - `-r`/`--resize-ratio`：リサイズ比率（0.0～1.0）
+    - `-s`/`--step`：このステップ数で飛ばし飛ばしフレームを書き出（>=3？）
+    - `-d`/`--diff-luminance-scale`/`--scale`：差分画像を何倍するか
+
+### ProcessStageExtractRectCLI [process_extract_rect_cli.py](./process_extract_rect_cli.py)
+
+動画のモーション抽出を行う矩形領域を設定するための対話プログラムを起動する。
+
+```shell
+python main.py extract-rect-cli
+python main.py cli-rect
+python main.py erc
+```
+
+- 位置引数
+    - `video_name`：動画の名前
+- キーワード引数
+    - （なし）
+
+### ProcessStageMarkerImport [process_labeled_frame_dump.py](./process_labeled_frame_dump.py) <font color="red">現在開発中</font>
+
+インポートしたラベルデータから【フレームデータ vs. ラベル】のデータセットを生成する。
+
+```shell
+python main.py labeled-frame-dump
+python main.py lfd
+```
+
+- 位置引数
+    - （不明）
+- キーワード引数
+    - （不明）
+
+### ProcessStageMarkerImport [process_marker_import.py](./process_marker_import.py)
+
+[GitHub:ids-tt-video-marker](https://github.com/yasu-a/ids-tt-video-marker)による動画のラベルデータをインポートする。
+
+```shell
+python main.py marker-import
+python main.py mi
+```
+
+- 位置引数
+    - `json_paths`：jsonパス（複数，globパターン可）
+- キーワード引数
+    - （なし）
+
+## 実装と処理結果の紹介
+### Local-Maxによるキーポイント検出とモーション検出
 
 - [util_extrema_feature_motion_detector.py](./util_extrema_feature_motion_detector.py)
 - [note_extrema_key_frame_motion_detection.py](notes/note_extrema_key_frame_motion_detection.py)
@@ -79,17 +151,17 @@ Tチーム動画分析のリポジトリです。
 Key-frame distance matrix
 ![img](presen_materials/local_max_feature_dist_mat.png)
 
-# Motion Centroid Correction
+### Motion Centroid Correction
 
 - [note_keyframe_center_correction.py](notes/note_keyframe_center_correction.py)
 
 ![img](presen_materials/motion_centroid_correction/compare.png)
 
-## Correction Disabled
+#### Correction Disabled
 
 ![img](presen_materials/motion_centroid_correction/out_without_motion_correction.gif)
 
-## Correction Enabled
+#### Correction Enabled
 
 手前の選手の頭に注目
 
@@ -97,19 +169,19 @@ Disabledではベクトルが暴れているがenabledでは暴れが抑えら�
 
 ![img](presen_materials/motion_centroid_correction/out_with_motion_correction.gif)
 
-## Correction Disabled
+#### Correction Disabled
 
 ![img](presen_materials/motion_centroid_correction/out_without_motion_correction.png)
 
-## Correction Enabled
+#### Correction Enabled
 
 ![img](presen_materials/motion_centroid_correction/out_with_motion_correction.png)
 
-# Random Forest によるモーションの分類
+### Random Forest によるモーションの分類
 
 https://github.com/yasu-a/ids-tt-video-analysis/blob/master/presen_materials/start_detection.mp4
 
-# LSTM によるモーションの分類
+### LSTM によるモーションの分類
 
 https://github.com/yasu-a/ids-tt-video-analysis/blob/master/presen_materials/note_rnn_rally_detection/rally_detection_rnn.mp4
 

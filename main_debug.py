@@ -1,5 +1,5 @@
 import main
 
-argv = ['lfd']
+argv = ['-h']
 
 main.run(argv)
