@@ -2,7 +2,6 @@ import process_extract_rect_cli
 import process_marker_import
 import process_primitive_motion_dump
 import process_video_dump
-import process_visualize_primitive_motion
 from process import register_process_in_module, run
 
 register_process_in_module(process_video_dump)
