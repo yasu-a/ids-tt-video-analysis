@@ -33,9 +33,9 @@ def _handler(process_stage_type):
     def _handler_impl(args):
         kwargs = vars(args)
         kwargs.pop('_handler')
-        for k in list(kwargs.keys()):
-            if kwargs.get(k) is None:
-                kwargs.pop(k)
+        # for k in list(kwargs.keys()):
+        #     if kwargs.get(k) is None:
+        #         kwargs.pop(k)
         process_stage = process_stage_type(**kwargs)
         process_stage.run()
 
