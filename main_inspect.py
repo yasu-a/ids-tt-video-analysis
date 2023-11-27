@@ -132,7 +132,7 @@ class OperationContext(OperationBase):
                         print(f' [Array] {name!r}')
                         print('NULL')
                     else:
-                        print(f' [Array] {name!r} {value.shape} / {value.size} / {value.dtype}')
+                        print(f' [Array] {name!r} {value.shape} / {value.scale} / {value.dtype}')
                         if args.full:
                             print(value)
                         elif args.imshow:
@@ -141,7 +141,7 @@ class OperationContext(OperationBase):
                             cv2.imshow('cv2.imshow', cv2.cvtColor(value, cv2.COLOR_BGR2RGB))
                             cv2.waitKey()
                         else:
-                            if value.size < 32:
+                            if value.scale < 32:
                                 print(value)
                             else:
                                 print('(--full to show full data)')
@@ -188,7 +188,8 @@ class OperationContext(OperationBase):
                     if value is None:
                         print(f'  [Array] {name:<20s} NULL')
                     else:
-                        print(f'  [Array] {name:<20s} {value.shape} / {value.size} / {value.dtype}')
+                        print(
+                            f'  [Array] {name:<20s} {value.shape} / {value.scale} / {value.dtype}')
 
 
 def run(cl: list[str]):

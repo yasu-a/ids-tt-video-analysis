@@ -1,4 +1,5 @@
 import argparse
+from typing import Optional
 
 import numpy as np
 from tqdm import tqdm
@@ -9,7 +10,8 @@ import process
 import storage
 import storage.npstorage as snp
 import train_input
-from util_extrema_feature_motion_detector import ExtremaFeatureMotionDetector
+from train_input import RectActualScaled
+from util_extrema_feature_motion_detector import PMDetector
 
 logger = app_logging.create_logger(__name__)
 
@@ -63,7 +65,8 @@ class ProcessStagePrimitiveMotionDump(process.ProcessStage):
             ) as snp_primitive_motion:
                 assert isinstance(snp_primitive_motion, snp.NumpyStorage)
 
-                detector = None
+                detector: Optional[PMDetector] = None
+                rect_actual_scaled: Optional[RectActualScaled] = None
 
                 for i in tqdm(range(snp_video_frame.count() - 1)):
                     snp_vf_entry_current = snp_video_frame.get_entry(i)
@@ -72,16 +75,24 @@ class ProcessStagePrimitiveMotionDump(process.ProcessStage):
                     assert isinstance(snp_vf_entry_next, snp_context.SNPEntryVideoFrame)
 
                     if detector is None:
-                        height = snp_vf_entry_current.motion.shape[0]
-                        width = snp_vf_entry_current.motion.shape[1]
-                        rect = train_input.load_rect(
+                        source_frame_height = snp_vf_entry_current.motion.shape[0]
+                        source_frame_width = snp_vf_entry_current.motion.shape[1]
+
+                        rect_actual_scaled = train_input.frame_rects.actual_scaled(
                             video_name=self.__video_name,
-                            height=height,
-                            width=width
+                            height=source_frame_height,
+                            width=source_frame_width
                         )
-                        detector = ExtremaFeatureMotionDetector(
-                            detection_region_rect=rect
+
+                        detector = PMDetector(
+                            detection_region_rect=rect_actual_scaled
                         )
+
+                        logger.info('Detector created:')
+                        logger.info(f' * {detector=}')
+                        logger.info(f' * {rect_actual_scaled=}')
+
+                    assert detector is not None and rect_actual_scaled is not None
 
                     originals = (
                         snp_vf_entry_current.original,
@@ -100,8 +111,12 @@ class ProcessStagePrimitiveMotionDump(process.ProcessStage):
                     )
 
                     if detection_result['valid']:
-                        start_mat = detection_result.a.global_motion_center
-                        end_mat = detection_result.b.global_motion_center
+                        start_mat = rect_actual_scaled.normalize_points_inside_based_on_corner(
+                            detection_result.a.local_motion_center
+                        )
+                        end_mat = rect_actual_scaled.normalize_points_inside_based_on_corner(
+                            detection_result.b.local_motion_center
+                        )
 
                         start_mat = _pad_motion_matrix(
                             start_mat,

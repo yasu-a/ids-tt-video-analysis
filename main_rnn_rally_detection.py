@@ -13,9 +13,9 @@ def create_y_data(rally_mask):
     index_rally_begin = np.where(mask)[0]
 
     assert rm.ndim == 1, rm.shape
-    index_delta = np.arange(rm.size)[:, None] - index_rally_begin
+    index_delta = np.arange(rm.scale)[:, None] - index_rally_begin
     nearest_rally_begin_index = index_rally_begin[np.abs(index_delta).argmin(axis=1)]
-    nearest_rally_begin_index_delta = nearest_rally_begin_index - np.arange(rm.size)
+    nearest_rally_begin_index_delta = nearest_rally_begin_index - np.arange(rm.scale)
     # y = (-Y_DATA_MARGIN < nearest_rally_begin_index_delta) & (
     #             nearest_rally_begin_index_delta < 0)
     y = (0 < nearest_rally_begin_index_delta) & (
@@ -48,7 +48,7 @@ def y_rnn_reshape(y):
     n_outer, n_inner = 8, 2
 
     diff = np.concatenate([[0], y[1:] - y[:-1]])
-    idx = np.arange(y.size)
+    idx = np.arange(y.scale)
     rise_idx, fall_idx = idx[diff == 1], idx[diff == -1]
     rise_dist, fall_dist = idx - rise_idx[:, None], idx - fall_idx[:, None]
     cls_pos = np.sum(np.logical_and(-n_outer <= rise_dist, rise_dist < n_inner), axis=0) > 0

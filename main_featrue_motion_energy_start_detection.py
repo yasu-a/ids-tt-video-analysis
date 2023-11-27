@@ -168,7 +168,7 @@ def main():
 
         def block_diff_feature(blocks):
             assert blocks.ndim == 1, blocks.shape
-            n = blocks.size
+            n = blocks.scale
             lst = [blocks[i] - blocks[j] for i in range(n) for j in range(n) if i > j]
 
             return np.array(lst)
@@ -194,9 +194,9 @@ def main():
 
         def create_y_data() -> np.ndarray:
             assert rm.ndim == 1, rm.shape
-            index_delta = np.arange(rm.size)[:, None] - index_rally_begin
+            index_delta = np.arange(rm.scale)[:, None] - index_rally_begin
             nearest_rally_begin_index = index_rally_begin[np.abs(index_delta).argmin(axis=1)]
-            nearest_rally_begin_index_delta = nearest_rally_begin_index - np.arange(rm.size)
+            nearest_rally_begin_index_delta = nearest_rally_begin_index - np.arange(rm.scale)
             # y = (-Y_DATA_MARGIN < nearest_rally_begin_index_delta) & (
             #             nearest_rally_begin_index_delta < 0)
             y = (0 < nearest_rally_begin_index_delta) & (
@@ -233,7 +233,7 @@ def main():
         # )
 
         SPLIT_RATIO = 0.33
-        SIZE = int(y.size * SPLIT_RATIO)
+        SIZE = int(y.scale * SPLIT_RATIO)
         print(f'{SIZE=}')
         x_train, x_test, y_train, y_test = x[SIZE:], x[:SIZE], y[SIZE:], y[:SIZE]
 

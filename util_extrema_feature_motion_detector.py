@@ -1,451 +1,447 @@
-import functools
+from dataclasses import dataclass
+from pprint import pprint
+from typing import Optional
 
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage
 import skimage.feature
-from legacy import util
-from sklearn.metrics.pairwise import cosine_similarity
+
+import npstorage_context as snp_context
+import storage
+import storage.npstorage as snp
+import train_input
+from train_input import RectNormalized
 
 
-class ExtremaFeatureMotionDetector:
-    def __init__(
-            self,
-            detection_region_rect,  # list of [height:slice, width:slice]
-            mean_conv_win_size_factor=32,
-            motion_local_max_distance_factor=32,
-            motion_local_max_thresh=0.03,
-            mutual_match_max_cos_distance=0.3,  # cos_distance = 1 - np.clip(cos_dist, 0, 1)
-            key_image_size=32,
-            max_velocity=20,
-            enable_motion_correction=True
-    ):
-        self.__p_detection_region_rect = detection_region_rect
-        self.__c_rect = *self.__p_detection_region_rect, slice(None, None)
-        self.__p_mean_conv_win_size_factor = mean_conv_win_size_factor
-        self.__p_motion_local_max_distance_factor = motion_local_max_distance_factor
-        self.__p_motion_local_max_thresh = motion_local_max_thresh
-        self.__p_mutual_match_max_cos_distance = mutual_match_max_cos_distance
-        self.__p_key_image_size = key_image_size // 2
-        self.__p_max_velocity = max_velocity
-        self.__p_enable_motion_correction = enable_motion_correction
+@dataclass(frozen=True)
+class PMDetectorParameter:
+    # 与えられた画像にかける平均値フィルタの大きさ`画像サイズ // mean_conv_win_size_factor`
+    mean_conv_win_size_factor = 32
 
-    def _process_input(self, img):
-        return img[self.__c_rect].astype(np.float32) / 256.0
+    # 輝度極大点を求めるときに`skimage.feature.peak_local_max`の引数`min_distance`に
+    # 与える値`画像サイズ // motion_local_max_distance_factor`
+    motion_local_max_distance_factor = 32
 
-    @functools.cache
-    def _mean_conv_filter(self, image_shape):
-        fil_shape = np.array(image_shape) // self.__p_mean_conv_win_size_factor
-        fil = np.ones(fil_shape, dtype=np.float32)
-        fil = fil / fil.sum()
-        return fil
+    # 輝度極大点を求めるときに極大点の対象とする最小輝度
+    motion_local_max_thresh = 0.03
 
-    def _process_mean(self, motion_image):
-        # return scipy.ndimage.median_filter(
-        #     motion_image,
-        #     size=np.array(motion_image.shape) // self.__p_mean_conv_win_size_factor,
-        #     mode='constant'
-        # )
-        motion_image = np.where(
-            motion_image < np.percentile(motion_image, 95),
-            0,
-            motion_image
-        )
-        return scipy.ndimage.convolve(
-            motion_image,
-            weights=self._mean_conv_filter(motion_image.shape),
-            mode='constant',
-        )
+    # キーフレームの相互マッチングのときに，cos距離がこの値以下のマッチングが対象となる。
+    # cos距離は`1 - np.clip(cos_distance, 0, 1)`で算出され，0に近いほうが距離が近い。
+    mutual_match_max_cos_distance = 0.3
 
-    def _local_max(self, img):
-        points = skimage.feature.peak_local_max(
-            img,
-            min_distance=max(img.shape) // self.__p_motion_local_max_distance_factor
-        )
-        return points[img[tuple(points.T)] > self.__p_motion_local_max_thresh]
+    # 切り出すキーフレームの大きさで，中心点から±`key_image_size`の範囲が切り出される。
+    # 実際に切り出されるキーフレームの大きさは`key_image_size * 2 + 1`
+    key_image_size = 32
 
-    @classmethod
-    def _split_3x3(cls, a):
-        n = a.shape[0] // 3  # assuming t.shape[0] == t.shape[1]
-        m = n * 2
-        slices = slice(None, n), slice(n, m), slice(m, None)
-        splits = [a[s1, s2] for s1 in slices for s2 in slices]
-        return splits
+    # これ以上の動きを持つモーションはエラーとして除外する
+    max_velocity = 20
 
-    @classmethod
-    def _extract_feature(cls, img):
-        r, g, b = img[:, :, 0], img[:, :, 1], img[:, :, 2]
-        feature = []
-        for t in [r, g, b]:
-            for p in cls._split_3x3(t):
-                hist, _ = np.histogram(p, bins=16, range=(0, 1))
-                feature.append(hist)
-        total_feature = np.concatenate(feature)
-        return total_feature / total_feature.sum()
+    # Motion-centroid-correctionを行うかどうか
+    enable_motion_correction = True
 
-    def _compare_key_batches(self, batch_lst_a, batch_lst_b):
-        feature_a = list(map(self._extract_feature, batch_lst_a))
-        feature_b = list(map(self._extract_feature, batch_lst_b))
 
-        dist_mat = 1 - np.clip(cosine_similarity(feature_a, feature_b), 0, 1)
+def _check_dtype_and_shape(dtype, shape):
+    def checker(a):
+        if not isinstance(dtype, tuple):
+            dtype_normalized = dtype,
+        else:
+            dtype_normalized = dtype
 
-        return dist_mat
+        if a.dtype not in dtype_normalized:
+            raise TypeError(f'expected {dtype=}, provided {a.dtype=}')
 
-    def _find_mutual_best_match(self, dist_mat):
-        best_forward = dist_mat.argmin(axis=1)  # x to y (1st dim to 2nd dim)
-        x_index = np.arange(dist_mat.shape[0])
-        best_backward = dist_mat.argmin(axis=0)  # y to x
-        y_index = np.arange(dist_mat.shape[1])
+        if a.ndim != len(shape):
+            raise TypeError(f'expected ndim={len(shape)}, provided {a.ndim=}')
 
-        mutual_love_from_forward = best_backward[best_forward] == x_index
-        x = x_index[mutual_love_from_forward]
-        y = y_index[best_forward[mutual_love_from_forward]]
-
-        assert x.size == y.size, (x.shape, y.shape)
-
-        mask = dist_mat[x, y] < self.__p_mutual_match_max_cos_distance
-        x, y = x[mask], y[mask]
-
-        return np.stack([x, y]).T
-
-    def _extract_key_points(self, original_images, motion_images):
-        class Keys(dict):
-            POINT_SPECIFIC_FEATURE_NAMES = 'local_center', 'global_center', 'frame'
-
-            def contains_no_key_points(self):
-                return self['frame_a'] is None or self['frame_b'] is None
-
-        def process():
-            # motion_x: npa[height, width, channels]
-            motion_a, motion_b = motion_images
-            # original_x: npa[height, width, channels]
-            original_a, original_b = original_images
-
-            # motion_x: npa[rect_height, rect_width]
-            motion_a = self._process_input(motion_a).mean(axis=2)
-            motion_b = self._process_input(motion_b).mean(axis=2)
-
-            # original_x: npa[rect_height, rect_width, channels]
-            original_a = self._process_input(original_a)
-            original_b = self._process_input(original_b)
-
-            # motion_x_mean: npa[rect_height, rect_width]
-            motion_a_mean = self._process_mean(motion_a)
-            motion_b_mean = self._process_mean(motion_b)
-
-            # motion_x_local_max: npa[N_MAX_x, 2(2nd axis, 1st axis)]
-            motion_a_local_max = self._local_max(motion_a_mean)
-            motion_b_local_max = self._local_max(motion_b_mean)
-
-            # key_img_x: npa[N_MAX_x, frame_size, frame_size, channels]
-            key_img_a = util.extract_frames_around(
-                original_a,
-                x=motion_a_local_max[:, 1],
-                y=motion_a_local_max[:, 0],
-                size=self.__p_key_image_size
-            )
-            key_img_b = util.extract_frames_around(
-                original_b,
-                x=motion_b_local_max[:, 1],
-                y=motion_b_local_max[:, 0],
-                size=self.__p_key_image_size
-            )
-
-            rect_offset = self.__c_rect[0].start, self.__c_rect[1].start
-
-            return Keys(
-                valid=False,  # holds unmatched points
-                motion_a=motion_a,
-                motion_b=motion_b,
-                original_a=original_a,
-                original_b=original_b,
-                local_center_a=motion_a_local_max,  # key point
-                local_center_b=motion_b_local_max,  # key point
-                global_center_a=motion_a_local_max + rect_offset,  # key point
-                global_center_b=motion_b_local_max + rect_offset,  # key point
-                frame_a=key_img_a,  # key frame
-                frame_b=key_img_b,  # key frame
-                count_a=0 if key_img_a is None else len(key_img_a),
-                count_b=0 if key_img_b is None else len(key_img_b)
-            )
-
-        return process()
-
-    def _extract_matches(self, keys_):
-        enable_motion_correction = self.__p_enable_motion_correction
-
-        class Matches(dict):
-            def __generate_pairs(self):
-                for i, t in enumerate('ab'):
-                    for n in self.keys.POINT_SPECIFIC_FEATURE_NAMES:
-                        field_name = f'{n}_{t}'
-                        match_index = self.match_index_pair[:, i]
-                        self[field_name] = self.keys[field_name][match_index]
-
-                self['match_index_a'] = self.match_index_pair[:, 0]
-                self['match_index_b'] = self.match_index_pair[:, 1]
-
-                self['original_a'] = self.keys['original_a']
-                self['original_b'] = self.keys['original_b']
-                self['motion_a'] = self.keys['motion_a']
-                self['motion_b'] = self.keys['motion_b']
-
-            _FILTER = np.array([
-                [0, 0.5, 0],
-                [0, 0, 0],
-                [0, -0.5, 0]
-            ])
-
-            @classmethod
-            def _correct_motion_center(cls, src_original, dst_original):
-                images = [src_original, dst_original]
-
-                for i in range(2):
-                    fr = images[i]
-
-                    grad = np.sqrt(
-                        np.square(
-                            scipy.ndimage.convolve(fr.mean(axis=2), cls._FILTER, mode='nearest')
-                        ) + np.square(
-                            scipy.ndimage.convolve(fr.mean(axis=2), cls._FILTER.T, mode='nearest')
-                        )
-                    )
-                    grad = skimage.filters.rank.mean(
-                        skimage.util.img_as_ubyte(grad),
-                        np.ones((3, 3))
-                    )
-                    mask = grad > np.percentile(grad, 50)
-                    grad[~mask] = 0
-
-                    fr = np.where(np.tile(mask[..., None], 3), fr, 0)
-
-                    images[i] = fr
-
-                # noinspection PyTypeChecker
-                tp: np.ndarray = skimage.feature.match_template(
-                    images[1],
-                    images[0],
-                    pad_input=True,
-                    mode='constant'
+        for i in range(len(shape)):
+            if shape[i] is None:
+                continue
+            if shape[i] != a.shape[i]:
+                raise TypeError(
+                    f'expected {shape=}, {shape[i]=} for dimension #{i}, '
+                    f'provided array with {a.shape=}, whose size of dimension #{i} is {a.shape[i]}'
                 )
 
-                center = np.array(dst_original.shape)[:-1] // 2
+    return checker
 
-                x, y = np.meshgrid(np.arange(tp.shape[0]), np.arange(tp.shape[1]))
-                x, y = x - center[0], y - center[1]
-                r = int(tp.shape[0] * 0.5) // 2
-                tp[x * x + y * y > r * r] = 0
 
-                mask_max = tp == tp.max(initial=None)
-                if np.count_nonzero(mask_max) == 1:
-                    xs, ys, _ = np.where(mask_max)
-                    match = np.array([xs[0], ys[0]])
-                    correction = match - center  # dst_original centroid - src_original centroid
-                else:
-                    correction = np.array([0, 0])
+class PMDetectorInputTimeSeriesEntry:
+    @property
+    def original_image(self):
+        return self.__original_image
 
-                return correction
+    @property
+    def diff_image(self):
+        return self.__diff_image
 
-            def __generate_motion_center(self):
-                self['local_motion_center_a'] = self['local_center_a']
-                self['global_motion_center_a'] = self['global_center_a']
-                if enable_motion_correction and self.n_matches > 0:
-                    cors = []
-                    for i in range(self.n_matches):
-                        cor = self._correct_motion_center(
-                            self['frame_a'][i], self['frame_b'][i]
-                        )
-                        cors.append(cor)
-                    cors = np.stack(cors)
+    @property
+    def timestamp(self):
+        return self.__timestamp
 
-                    self['local_motion_center_b'] = self['local_center_b'] + cors
-                    self['global_motion_center_b'] = self['global_center_b'] + cors
-                else:
-                    self['local_motion_center_b'] = self['local_center_b']
-                    self['global_motion_center_b'] = self['global_center_b']
+    @property
+    def height(self):
+        # returns the frame height sampled from `self.frame_original`
+        return self.original_image.shape[0]
 
-            def __generate_additional_data(self):
-                self['velocity'] = self['local_motion_center_b'] - self['local_motion_center_a']
-                self['velocity_x'] = self['velocity'][:, 0]
-                self['velocity_y'] = self['velocity'][:, 1]
-                self['velocity_norm'] = np.linalg.norm(self['velocity'], axis=1)
+    @property
+    def width(self):
+        # returns the frame width sampled from `self.frame_original`
+        return self.original_image.shape[1]
 
-            @property
-            def n_matches(self):
-                return len(self['local_center_a'])
+    @property
+    def frame_shape(self):
+        return self.height, self.width, 3
 
-            def __init__(self, *, keys, match_index_pair, dist_mat):
-                super().__init__()
-                self.keys = keys
-                self.match_index_pair = match_index_pair
-                self.dist_mat = dist_mat
-                self.__generate_pairs()
-                self.__generate_motion_center()
-                self.__generate_additional_data()
+    @property
+    def _checker_for_frame_image(self):
+        return _check_dtype_and_shape(
+            dtype=np.uint8,
+            shape=self.frame_shape
+        )
 
-            def apply_filter(self, mask):
-                for k in self:
-                    if k.startswith('original') or k.startswith('motion'):
-                        continue
-                    self[k] = self[k][mask]
+    def __init__(self, original_image, diff_image, timestamp):
+        """
+        PMDetectorの入力データのうちの時系列データ
+        :param original_image: np.uint8 with shape(height, width, channels)
+        :param diff_image: np.uint8 with shape(height, width, channels)
+        :param timestamp: float
+        """
+        # assign members
+        self.__original_image = original_image
+        self.__diff_image = diff_image
+        self.__timestamp = timestamp
 
-        def process(keys):
-            if keys.contains_no_key_points():
-                return keys | dict(valid=False)  # no motion detected
+        # check arguments
+        self._checker_for_frame_image(original_image)
+        self._checker_for_frame_image(diff_image)
 
-            # dist_mat: npa[N_MAX_a, N_MAX_b]
-            dist_mat = self._compare_key_batches(keys['frame_a'], keys['frame_b'])
-            # matches: npa[N_MATCH, 2(indexes of a, indexes of b)]
-            match_index_pair = self._find_mutual_best_match(dist_mat)
+        assert isinstance(timestamp, float), type(timestamp)
 
-            matches = Matches(
-                keys=keys,
-                match_index_pair=match_index_pair,
-                dist_mat=dist_mat
+
+class PMDetectorInput:
+    @property
+    def target_frame(self):
+        return self.__target_frame
+
+    @property
+    def next_frame(self):
+        return self.__next_frame
+
+    @property
+    def detection_rect_normalized(self):
+        return self.__detection_rect_normalized
+
+    @property
+    def detection_rect_actual_scaled(self):
+        return self.__detection_rect_normalized.to_actual_scaled(
+            width=self.width,
+            height=self.height
+        )
+
+    @property
+    def height(self):
+        # returns the frame height sampled from `self.target_frame`
+        return self.target_frame.height
+
+    @property
+    def width(self):
+        # returns the frame width sampled from `self.target_frame`
+        return self.target_frame.width
+
+    @property
+    def frame_shape(self):
+        return self.target_frame.frame_shape
+
+    def __init__(self, target_frame, next_frame, detection_rect_normalized):
+        # noinspection GrazieInspection
+        """
+        PMDetectorの入力データ
+
+        :param target_frame: PMDetectorInputTimeSeriesEntry
+        :param next_frame: PMDetectorInputTimeSeriesEntry
+        :param detection_rect_normalized: RectNormalized
+        """
+        # assign members
+        self.__target_frame = target_frame
+        self.__next_frame = next_frame
+        self.__detection_rect_normalized = detection_rect_normalized
+
+        # check arguments
+        assert isinstance(target_frame, PMDetectorInputTimeSeriesEntry), target_frame
+        assert isinstance(next_frame, PMDetectorInputTimeSeriesEntry), next_frame
+        assert target_frame.frame_shape == next_frame.frame_shape, \
+            (target_frame.frame_shape, next_frame.frame_shape)
+        assert isinstance(detection_rect_normalized, RectNormalized), detection_rect_normalized
+
+
+class PMDetectorResult:
+    original_images_clipped: np.ndarray = None
+    diff_images_clipped: np.ndarray = None
+    keypoints: list[np.ndarray] = None
+    keyframes: list[np.ndarray] = None
+
+
+class PMComputer:
+    def __init__(self, parameter: PMDetectorParameter, source: PMDetectorInput):
+        self.__p = parameter
+        self.__src = source
+        self.__result = PMDetectorResult()
+
+    def __extract_key_frame_around(self, image, index_axis_1, index_axis_2):
+        assert image.ndim == 3, image.shape
+
+        # decide the size of padding
+        size = self.__p.key_image_size
+
+        # pad source image
+        padded_image = np.pad(
+            image,
+            ((size, size), (size, size), (0, 0)),
+            constant_values=0
+        )
+
+        # extract key frames
+        keyframes = []
+        # for each provided point
+        for idx1, idx2 in zip(index_axis_1, index_axis_2):
+            # shift center position by padding size
+            c_idx1, c_idx2 = idx1 + size, idx2 + size
+            # create index slice
+            keyframe_index = (
+                slice(c_idx1 - size, c_idx1 + size + 1),
+                slice(c_idx2 - size, c_idx2 + size + 1),
+                slice(None, None)
+            )
+            # extract key frame around (idx1, idx2)
+            keyframe = padded_image[keyframe_index]
+            # append keyframe
+            keyframes.append(keyframe)
+
+        # returns keyframes by np-array if any keyframes found; otherwise returns None
+        if keyframes:
+            return np.stack(keyframes)
+        else:
+            return None
+
+    def detect_keypoints(self):
+        # diff -> _process_input -> _process_mean -> _local_max -> <x>
+        # original -> _process_input -> <x>
+        #   <x> -> extract_frames_around
+
+        _check_for_uint8_2hw3 = _check_dtype_and_shape(
+            dtype=np.uint8,
+            shape=(
+                2,
+                self.__src.height,
+                self.__src.width,
+                3
+            )
+        )
+        _check_for_float32_2hw3_clipped = _check_dtype_and_shape(
+            dtype=np.float32,
+            shape=(
+                2,
+                self.__src.detection_rect_actual_scaled.size.y,
+                self.__src.detection_rect_actual_scaled.size.x,
+                3
+            )
+        )
+        _check_for_uint8_2hw3_clipped = _check_dtype_and_shape(
+            dtype=np.uint8,
+            shape=(
+                2,
+                self.__src.detection_rect_actual_scaled.size.y,
+                self.__src.detection_rect_actual_scaled.size.x,
+                3
+            )
+        )
+        _check_for_float32_2hw_clipped = _check_dtype_and_shape(
+            dtype=np.float32,
+            shape=(
+                2,
+                self.__src.detection_rect_actual_scaled.size.y,
+                self.__src.detection_rect_actual_scaled.size.x
+            )
+        )
+
+        # ** prepare for rect
+
+        # generate clip index (time-axis, y-axis(height), x-axis(width), channel-axis)
+        detection_region_clip_index \
+            = slice(None, None), *self.__src.detection_rect_actual_scaled.index3d
+
+        # *** focus on the original frame images
+
+        # stack original images along time-axis
+        original_images = np.stack([
+            self.__src.target_frame.original_image,
+            self.__src.next_frame.original_image
+        ])
+        _check_for_uint8_2hw3(original_images)
+
+        # clip by detection region
+        original_images = original_images[detection_region_clip_index]
+        _check_for_uint8_2hw3_clipped(original_images)
+
+        # convert rgb-values from uint8 to normalized float
+        original_images = original_images.astype(np.float32) / 256.0
+        assert 0 <= original_images.min() and original_images.max() < 1, \
+            (original_images.min(), original_images.max())
+        _check_for_float32_2hw3_clipped(original_images)
+
+        # *** focus on the diff images
+
+        # stack diff images along time-axis
+        diff_images = np.stack([
+            self.__src.target_frame.diff_image,
+            self.__src.next_frame.diff_image
+        ])
+        _check_for_uint8_2hw3(diff_images)
+
+        # clip by detection region
+        diff_images = diff_images[detection_region_clip_index]
+        _check_for_uint8_2hw3_clipped(diff_images)
+
+        # convert rgb-values from uint8 to normalized float
+        diff_images = diff_images.astype(np.float32) / 256.0
+        assert 0 <= diff_images.min() and diff_images.max() < 1, \
+            (diff_images.min(), diff_images.max())
+        _check_for_float32_2hw3_clipped(diff_images)
+
+        # convert rgb channels to grayscale
+        diff_images = diff_images.mean(axis=-1)
+        _check_for_float32_2hw_clipped(diff_images)
+
+        # remove luminance except significant ones for each frame time
+        for i in range(2):
+            diff_images[i] = np.where(
+                diff_images[i] < np.percentile(diff_images[i], 95),
+                0,
+                diff_images[i]
+            )
+            _check_for_float32_2hw_clipped(diff_images)
+
+        # generate mean filter matrix
+        filter_shape = np.array(
+            self.__src.detection_rect_actual_scaled.size
+        ) // self.__p.mean_conv_win_size_factor
+        filter_matrix = np.ones(filter_shape, dtype=np.float32)
+        filter_matrix /= filter_matrix.sum()
+        assert np.isclose(filter_matrix.sum(), 1), filter_matrix.sum()
+
+        # apply filter for each frame time
+        for i in range(2):
+            # noinspection PyUnresolvedReferences
+            diff_images[i] = scipy.ndimage.convolve(
+                diff_images[i],
+                weights=filter_matrix,
+                mode='constant'
             )
 
-            return matches
+        # calculate local maxima for each frame time
+        local_max_points = [None, None]
+        for i in range(2):
+            local_max_points[i] = skimage.feature.peak_local_max(
+                diff_images[i],
+                min_distance=max(diff_images[i].shape) // self.__p.motion_local_max_distance_factor
+            )
 
-        return process(keys_)
+            # peak_local_max() returns the local maximum point in the order of
+            # (height, width), which match our expectation
+            # (1st-axis, 2nd-axis) == (y-axis, x-axis).
+            local_max_points[i] = local_max_points[i]
 
-    def compute(self, original_images, motion_images):
-        keys_ = self._extract_key_points(original_images, motion_images)
-        matches = self._extract_matches(keys_)
+            _check_dtype_and_shape(
+                dtype=np.int64,
+                shape=(None, 2)  # (<number of local maxima>, [x, y])
+            )(local_max_points[i])
 
-        if 'valid' in matches:
-            return matches
+        # *** extract key frames
+        # extract key frames for each frame time
+        keyframes = [None, None]
+        for i in range(2):
+            keyframes[i] = self.__extract_key_frame_around(
+                image=original_images[i],
+                index_axis_1=local_max_points[i][:, 0],
+                index_axis_2=local_max_points[i][:, 1]
+            )
+            _check_dtype_and_shape(
+                dtype=np.float32,
+                shape=(
+                    None,
+                    self.__p.key_image_size * 2 + 1,
+                    self.__p.key_image_size * 2 + 1,
+                    3
+                )
+            )(keyframes[i])
 
-        # FIXME: calculate velocity with motion center
+        # *** set the whole result in this section
+        _check_for_float32_2hw3_clipped(original_images)
+        self.__result.original_images_clipped = original_images
+        _check_for_float32_2hw_clipped(diff_images)
+        self.__result.diff_images_clipped = diff_images
+        self.__result.keypoints = local_max_points
+        self.__result.keyframes = keyframes
 
-        mask = matches['velocity_norm'] < self.__p_max_velocity
-        matches.apply_filter(mask)
-
-        class ComputationResult(dict):
-            velocity: np.ndarray = ...
-            velocity_x: np.ndarray = ...
-            velocity_y: np.ndarray = ...
-            velocity_norm: np.ndarray = ...
-            valid: bool = ...
-
-            def __get_accessor(self, suffix):
-                class Accessor:
-                    local_center: np.ndarray = ...
-                    global_local_center: np.ndarray = ...
-                    frame: np.ndarray = ...
-                    local_motion_center: np.ndarray = ...
-                    global_motion_center: np.ndarray = ...
-                    match_index: np.ndarray = ...
-
-                    def __init__(self, result):
-                        self._result = result
-
-                    def __getattribute__(self, name):
-                        value = super().__getattribute__('_result').get(f'{name}_{suffix}')
-                        if value is not None:
-                            return value
-                        return super().__getattribute__(name)
-
-                return Accessor(self)
-
-            def __init__(self, matches, additional_dict):
-                super().__init__(matches | additional_dict)
-                self.matches = matches
-                self.a = self.__get_accessor('a')
-                self.b = self.__get_accessor('b')
-
-            def __getattribute__(self, name):
-                value = super().__getattribute__('get')(name)
-                if value is not None:
-                    return value
-                return super().__getattribute__(name)
-
-        return ComputationResult(matches, dict(valid=True))
-
-# def main():
-#     from legacy.util import motions, originals
-#
-#     i = 193
-#     motion_images = motions[i], motions[i + 1]
-#     original_images = originals[i], originals[i + 1]
-#
-#     rect = slice(70, 260), slice(180, 255)  # height, width
-#     # height: 奥の選手の頭から手前の選手の足がすっぽり入るように
-#     # width: ネットの部分の卓球台の幅に合うように
-#
-#     w = rect[1].stop - rect[1].start
-#     aw = int(w * 1.0)
-#     rect = slice(rect[0].start, rect[0].stop), slice(rect[1].start - aw, rect[1].stop + aw)
-#
-#     detector = ExtremaFeatureMotionDetector(
-#         detection_region_rect=rect
-#     )
-#
-#     result = detector.compute(original_images, motion_images)
-#
-#     import matplotlib.pyplot as plt
-#
-#     fig = plt.figure()
-#
-#     import matplotlib.animation as animation
-#
-#     def animate(i):
-#         ax = fig.gca()
-#         ax.cla()
-#
-#         for s, d in zip(result.a.global_motion_center, result.b.global_motion_center):
-#             ax.arrow(
-#                 s[1],
-#                 s[0],
-#                 d[1] - s[1],
-#                 d[0] - s[0],
-#                 color='red',
-#                 width=1
-#             )
-#         ax.imshow(motion_images[i])
-#
-#     ani = animation.FuncAnimation(fig, animate, interval=500, frames=2, blit=False, save_count=50)
-#
-#     ani.save('anim.gif')
-#
-#     from tqdm import tqdm
-#
-#     matches_tuple = [tuple(x) for x in zip(result.a.match_index, result.b.match_index)]
-#     n_keys_a = result.matches.keys['count_a']
-#     n_keys_b = result.matches.keys['count_b']
-#     fig, axes = plt.subplots(n_keys_a + 2, n_keys_b + 2, figsize=(40, 40))
-#
-#     for i in tqdm(range(n_keys_a)):
-#         for j in range(n_keys_b):
-#             axes[i + 2, j + 2].bar([0], [result.matches.dist_mat[i, j]])
-#             axes[i + 2, j + 2].set_ylim(0, 1)
-#             if (i, j) in matches_tuple:
-#                 axes[i + 2, j + 2].scatter([0], [0.5], color='red', s=500)
-#
-#     for i in range(n_keys_a):
-#         axes[i + 2, 0].imshow(original_images[0])
-#         axes[i + 2, 0].scatter(
-#             result.matches.keys['global_center_a'][i, 1],
-#             result.matches.keys['global_center_a'][i, 0],
-#             color='yellow',
-#             marker='x',
-#             s=200
-#         )
-#         axes[i + 2, 1].imshow(result.matches.keys['frame_a'][i])
-#     for i in range(n_keys_b):
-#         axes[0, i + 2].imshow(original_images[0])
-#         axes[0, i + 2].scatter(
-#             result.matches.keys['global_center_b'][i, 1],
-#             result.matches.keys['global_center_b'][i, 0],
-#             color='yellow',
-#             marker='x',
-#             s=200
-#         )
-#         axes[1, i + 2].imshow(result.matches.keys['frame_b'][i])
-#     for ax in axes.flatten():
-#         ax.axis('off')
-#     fig.tight_layout()
-#     fig.savefig('local_max_feature_dist_mat.jpg')
-#     fig.show()
+    def compute(self) -> PMDetectorResult:
+        self.detect_keypoints()
+        return self.__result
 
 
-# if __name__ == '__main__':
-#     main()
+class PMDetector:
+    def __init__(self, parameter: PMDetectorParameter):
+        self.__parameter = parameter
+
+    def compute(self, source: PMDetectorInput):
+        return PMComputer(self.__parameter, source).compute()
+
+
+if __name__ == '__main__':
+    def main():
+        video_name = '20230225_02_Matsushima_Ando'
+
+        with storage.create_instance(
+                domain='numpy_storage',
+                entity=video_name,
+                context='frames',
+                mode='r',
+        ) as snp_video_frame:
+            assert isinstance(snp_video_frame, snp.NumpyStorage)
+
+            i = 300
+
+            snp_entry_target = snp_video_frame.get_entry(i)
+            snp_entry_next = snp_video_frame.get_entry(i + 1)
+            assert isinstance(snp_entry_target, snp_context.SNPEntryVideoFrame)
+            assert isinstance(snp_entry_next, snp_context.SNPEntryVideoFrame)
+
+            detector: Optional[PMDetector] = PMDetector(
+                PMDetectorParameter()
+            )
+            result = detector.compute(
+                PMDetectorInput(
+                    target_frame=PMDetectorInputTimeSeriesEntry(
+                        original_image=snp_entry_target.original,
+                        diff_image=snp_entry_target.motion,
+                        timestamp=float(snp_entry_target.timestamp)
+                    ),
+                    next_frame=PMDetectorInputTimeSeriesEntry(
+                        original_image=snp_entry_next.original,
+                        diff_image=snp_entry_next.motion,
+                        timestamp=float(snp_entry_next.timestamp)
+                    ),
+                    detection_rect_normalized=train_input.frame_rects.normalized(video_name)
+                )
+            )
+
+            plt.figure()
+            plt.subplot(211)
+            plt.imshow(result.original_images_clipped[0])
+            plt.subplot(212)
+            plt.imshow(result.original_images_clipped[1])
+            plt.show()
+            pprint(result.keypoints)
+
+
+    main()

@@ -10,6 +10,7 @@ import npstorage_context as snp_context
 import process
 import storage
 import storage.npstorage as snp
+import train_input
 
 logger = app_logging.create_logger(__name__)
 
@@ -84,6 +85,9 @@ class ProcessStagePrimitiveMotionVisualize(process.ProcessStage):
                         assert isinstance(vfd_entry, snp_context.SNPEntryVideoFrame)
                         assert isinstance(pmd_entry, snp_context.SNPEntryPrimitiveMotion)
 
+                        src_frame_height = vfd_entry.motion.shape[0]
+                        src_frame_width = vfd_entry.motion.shape[1]
+
                         assert pmd_entry.fi == vfd_entry.fi, (pmd_entry.fi, vfd_entry.fi)
 
                         image = vfd_entry.original.copy()
@@ -91,8 +95,26 @@ class ProcessStagePrimitiveMotionVisualize(process.ProcessStage):
                         for m_start, m_end in zip(pmd_entry.start, pmd_entry.end):
                             if np.any(np.isnan(m_start)):
                                 break
-                            y1, x1 = m_start.astype(int) * 2
-                            y2, x2 = m_end.astype(int) * 2
+
+                            rect = train_input.load_rect(
+                                video_name=self.__video_name,
+                                height=src_frame_height,
+                                width=src_frame_width
+                            )
+                            rect_y, rect_x = rect
+                            rect_height = rect_y.stop - rect_y.start
+                            rect_width = rect_x.stop - rect_x.start
+                            local_motion_normalize_factor \
+                                = 1.0 / np.array([rect_width, rect_height])
+                            rect_offset = np.array([rect_x.start, rect_y.start])
+
+                            y1, x1 = (
+                                             m_start / local_motion_normalize_factor + rect_offset
+                                     ).astype(int) * 2
+                            y2, x2 = (
+                                             m_end / local_motion_normalize_factor + rect_offset
+                                     ).astype(int) * 2
+                            # print((x1, y1), (x2, y2))
                             cv2.arrowedLine(image, (x1, y1), (x2, y2), (0, 255, 255), 2)
 
                         vw.write(image)

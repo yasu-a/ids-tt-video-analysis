@@ -173,7 +173,7 @@ class FeatureGenerator:
 
         def block_diff_feature(blocks):
             assert blocks.ndim == 1, blocks.shape
-            n = blocks.size
+            n = blocks.scale
             lst = [blocks[i] - blocks[j] for i in range(n) for j in range(n) if i > j]
 
             return np.array(lst)
@@ -237,7 +237,7 @@ class FeatureGenerator:
 
         def block_diff_feature(blocks):
             assert blocks.ndim == 1, blocks.shape
-            n = blocks.size
+            n = blocks.scale
             lst = [blocks[i] - blocks[j] for i in range(n) for j in range(n) if i > j]
 
             return np.array(lst)
