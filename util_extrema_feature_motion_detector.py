@@ -332,9 +332,9 @@ class PMComputer:
             )
 
         # calculate local maxima for each frame time
-        local_max_points = [None, None]
+        keypoints = [None, None]
         for i in range(2):
-            local_max_points[i] = skimage.feature.peak_local_max(
+            keypoints[i] = skimage.feature.peak_local_max(
                 diff_images[i],
                 min_distance=max(diff_images[i].shape) // self.__p.local_max_distance_factor
             )
@@ -342,12 +342,12 @@ class PMComputer:
             # peak_local_max() returns the local maximum point in the order of
             # (height, width), which match our expectation
             # (1st-axis, 2nd-axis) == (y-axis, x-axis).
-            local_max_points[i] = local_max_points[i]
+            keypoints[i] = keypoints[i]
 
             _check_dtype_and_shape(
                 dtype=np.int64,
                 shape=(None, 2)  # (<number of local maxima>, [x, y])
-            )(local_max_points[i])
+            )(keypoints[i])
 
         # *** extract key frames
         # extract key frames for each frame time
@@ -355,8 +355,8 @@ class PMComputer:
         for i in range(2):
             keyframes[i] = self.__extract_key_frame_around(
                 image=original_images[i],
-                index_axis_1=local_max_points[i][:, 0],
-                index_axis_2=local_max_points[i][:, 1]
+                index_axis_1=keypoints[i][:, 0],
+                index_axis_2=keypoints[i][:, 1]
             )
             _check_dtype_and_shape(
                 dtype=np.float32,
@@ -373,7 +373,9 @@ class PMComputer:
         self.__result.original_images_clipped = original_images
         check.f32_2hw_clipped(diff_images)
         self.__result.diff_images_clipped = diff_images
-        self.__result.keypoints = local_max_points
+        # TODO: check for keypoints
+        self.__result.keypoints = keypoints
+        # TODO: check for keyframes
         self.__result.keyframes = keyframes
 
     def compute(self) -> PMDetectorResult:
@@ -391,7 +393,7 @@ class PMDetector:
 
 if __name__ == '__main__':
     def main():
-        video_name = '20230225_02_Matsushima_Ando'
+        video_name = '20230205_04_Narumoto_Harimoto'
 
         with storage.create_instance(
                 domain='numpy_storage',
@@ -401,7 +403,7 @@ if __name__ == '__main__':
         ) as snp_video_frame:
             assert isinstance(snp_video_frame, snp.NumpyStorage)
 
-            i = 300
+            i = 180
 
             snp_entry_target = snp_video_frame.get_entry(i)
             snp_entry_next = snp_video_frame.get_entry(i + 1)
@@ -427,11 +429,17 @@ if __name__ == '__main__':
                 )
             )
 
-            plt.figure()
-            plt.subplot(211)
-            plt.imshow(result.original_images_clipped[0])
-            plt.subplot(212)
-            plt.imshow(result.original_images_clipped[1])
+            plt.figure(figsize=(16, 8))
+            for i in range(2):
+                plt.subplot(120 + i + 1)
+                plt.imshow(result.original_images_clipped[i])
+                plt.scatter(
+                    *result.keypoints[i].T[::-1],
+                    c='yellow',
+                    marker='x',
+                    s=500,
+                    linewidths=3
+                )
             plt.show()
             pprint(result.keypoints)
 
