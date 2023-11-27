@@ -16,12 +16,12 @@ from train_input import RectNormalized
 
 @dataclass(frozen=True)
 class PMDetectorParameter:
-    # 与えられた画像にかける平均値フィルタの大きさ`画像サイズ // mean_conv_win_size_factor`
-    mean_conv_win_size_factor = 32
+    # 与えられた画像にかける平均値フィルタの大きさ`画像サイズ // mean_filter_size_factor`
+    mean_filter_size_factor = 32
 
     # 輝度極大点を求めるときに`skimage.feature.peak_local_max`の引数`min_distance`に
-    # 与える値`画像サイズ // motion_local_max_distance_factor`
-    motion_local_max_distance_factor = 32
+    # 与える値`画像サイズ // local_max_distance_factor`
+    local_max_distance_factor = 32
 
     # 輝度極大点を求めるときに極大点の対象とする最小輝度
     motion_local_max_thresh = 0.03
@@ -129,12 +129,12 @@ class PMDetectorInput:
         return self.__next_frame
 
     @property
-    def detection_rect_normalized(self):
-        return self.__detection_rect_normalized
+    def rect_normalized(self):
+        return self.__rect_normalized
 
     @property
-    def detection_rect_actual_scaled(self):
-        return self.__detection_rect_normalized.to_actual_scaled(
+    def rect_actual_scaled(self):
+        return self.__rect_normalized.to_actual_scaled(
             width=self.width,
             height=self.height
         )
@@ -165,7 +165,7 @@ class PMDetectorInput:
         # assign members
         self.__target_frame = target_frame
         self.__next_frame = next_frame
-        self.__detection_rect_normalized = detection_rect_normalized
+        self.__rect_normalized = detection_rect_normalized
 
         # check arguments
         assert isinstance(target_frame, PMDetectorInputTimeSeriesEntry), target_frame
@@ -224,52 +224,45 @@ class PMComputer:
         else:
             return None
 
+    def __array_checkers_for_detect_keypoints(self):
+        height = self.__src.height
+        width = self.__src.width
+        rect_height = self.__src.rect_actual_scaled.size.y
+        rect_width = self.__src.rect_actual_scaled.size.x
+
+        @dataclass(frozen=True)
+        class ArrayCheckersForDetectKeypoints:
+            ui8_2hw3 = _check_dtype_and_shape(
+                dtype=np.uint8,
+                shape=(2, height, width, 3)
+            )
+            f32_2hw3_clipped = _check_dtype_and_shape(
+                dtype=np.float32,
+                shape=(2, rect_height, rect_width, 3)
+            )
+            ui8_2hw3_clipped = _check_dtype_and_shape(
+                dtype=np.uint8,
+                shape=(2, rect_height, rect_width, 3)
+            )
+            f32_2hw_clipped = _check_dtype_and_shape(
+                dtype=np.float32,
+                shape=(2, rect_height, rect_width)
+            )
+
+        return ArrayCheckersForDetectKeypoints
+
     def detect_keypoints(self):
         # diff -> _process_input -> _process_mean -> _local_max -> <x>
         # original -> _process_input -> <x>
         #   <x> -> extract_frames_around
 
-        _check_for_uint8_2hw3 = _check_dtype_and_shape(
-            dtype=np.uint8,
-            shape=(
-                2,
-                self.__src.height,
-                self.__src.width,
-                3
-            )
-        )
-        _check_for_float32_2hw3_clipped = _check_dtype_and_shape(
-            dtype=np.float32,
-            shape=(
-                2,
-                self.__src.detection_rect_actual_scaled.size.y,
-                self.__src.detection_rect_actual_scaled.size.x,
-                3
-            )
-        )
-        _check_for_uint8_2hw3_clipped = _check_dtype_and_shape(
-            dtype=np.uint8,
-            shape=(
-                2,
-                self.__src.detection_rect_actual_scaled.size.y,
-                self.__src.detection_rect_actual_scaled.size.x,
-                3
-            )
-        )
-        _check_for_float32_2hw_clipped = _check_dtype_and_shape(
-            dtype=np.float32,
-            shape=(
-                2,
-                self.__src.detection_rect_actual_scaled.size.y,
-                self.__src.detection_rect_actual_scaled.size.x
-            )
-        )
+        check = self.__array_checkers_for_detect_keypoints()
 
         # ** prepare for rect
 
         # generate clip index (time-axis, y-axis(height), x-axis(width), channel-axis)
         detection_region_clip_index \
-            = slice(None, None), *self.__src.detection_rect_actual_scaled.index3d
+            = slice(None, None), *self.__src.rect_actual_scaled.index3d
 
         # *** focus on the original frame images
 
@@ -278,17 +271,17 @@ class PMComputer:
             self.__src.target_frame.original_image,
             self.__src.next_frame.original_image
         ])
-        _check_for_uint8_2hw3(original_images)
+        check.ui8_2hw3(original_images)
 
         # clip by detection region
         original_images = original_images[detection_region_clip_index]
-        _check_for_uint8_2hw3_clipped(original_images)
+        check.ui8_2hw3_clipped(original_images)
 
         # convert rgb-values from uint8 to normalized float
         original_images = original_images.astype(np.float32) / 256.0
         assert 0 <= original_images.min() and original_images.max() < 1, \
             (original_images.min(), original_images.max())
-        _check_for_float32_2hw3_clipped(original_images)
+        check.f32_2hw3_clipped(original_images)
 
         # *** focus on the diff images
 
@@ -297,21 +290,21 @@ class PMComputer:
             self.__src.target_frame.diff_image,
             self.__src.next_frame.diff_image
         ])
-        _check_for_uint8_2hw3(diff_images)
+        check.ui8_2hw3(diff_images)
 
         # clip by detection region
         diff_images = diff_images[detection_region_clip_index]
-        _check_for_uint8_2hw3_clipped(diff_images)
+        check.ui8_2hw3_clipped(diff_images)
 
         # convert rgb-values from uint8 to normalized float
         diff_images = diff_images.astype(np.float32) / 256.0
         assert 0 <= diff_images.min() and diff_images.max() < 1, \
             (diff_images.min(), diff_images.max())
-        _check_for_float32_2hw3_clipped(diff_images)
+        check.f32_2hw3_clipped(diff_images)
 
         # convert rgb channels to grayscale
         diff_images = diff_images.mean(axis=-1)
-        _check_for_float32_2hw_clipped(diff_images)
+        check.f32_2hw_clipped(diff_images)
 
         # remove luminance except significant ones for each frame time
         for i in range(2):
@@ -320,12 +313,11 @@ class PMComputer:
                 0,
                 diff_images[i]
             )
-            _check_for_float32_2hw_clipped(diff_images)
+            check.f32_2hw_clipped(diff_images)
 
         # generate mean filter matrix
         filter_shape = np.array(
-            self.__src.detection_rect_actual_scaled.size
-        ) // self.__p.mean_conv_win_size_factor
+            self.__src.rect_actual_scaled.size) // self.__p.mean_filter_size_factor
         filter_matrix = np.ones(filter_shape, dtype=np.float32)
         filter_matrix /= filter_matrix.sum()
         assert np.isclose(filter_matrix.sum(), 1), filter_matrix.sum()
@@ -344,7 +336,7 @@ class PMComputer:
         for i in range(2):
             local_max_points[i] = skimage.feature.peak_local_max(
                 diff_images[i],
-                min_distance=max(diff_images[i].shape) // self.__p.motion_local_max_distance_factor
+                min_distance=max(diff_images[i].shape) // self.__p.local_max_distance_factor
             )
 
             # peak_local_max() returns the local maximum point in the order of
@@ -377,9 +369,9 @@ class PMComputer:
             )(keyframes[i])
 
         # *** set the whole result in this section
-        _check_for_float32_2hw3_clipped(original_images)
+        check.f32_2hw3_clipped(original_images)
         self.__result.original_images_clipped = original_images
-        _check_for_float32_2hw_clipped(diff_images)
+        check.f32_2hw_clipped(diff_images)
         self.__result.diff_images_clipped = diff_images
         self.__result.keypoints = local_max_points
         self.__result.keyframes = keyframes
