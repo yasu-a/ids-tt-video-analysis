@@ -32,7 +32,7 @@ class PMDetectorParameter:
 
     # 切り出すキーフレームの大きさで，中心点から±`key_image_size`の範囲が切り出される。
     # 実際に切り出されるキーフレームの大きさは`key_image_size * 2 + 1`
-    key_image_size = 32
+    key_image_size: int = 32
 
     # これ以上の動きを持つモーションはエラーとして除外する
     max_velocity = 20
@@ -195,6 +195,7 @@ class PMComputer:
         size = self.__p.key_image_size
 
         # pad source image
+        # noinspection PyTypeChecker
         padded_image = np.pad(
             image,
             ((size, size), (size, size), (0, 0)),
@@ -378,9 +379,32 @@ class PMComputer:
         # TODO: check for keyframes
         self.__result.keyframes = keyframes
 
+    def extract_matches(self):
+        print(self.__result.keyframes)
+        pass
+
     def compute(self) -> PMDetectorResult:
         self.detect_keypoints()
+        self.extract_matches()
         return self.__result
+
+
+class PMDetectorTester:
+    @staticmethod
+    def test_detect_keypoints(result: PMDetectorResult):
+        plt.figure(figsize=(16, 8))
+        for i in range(2):
+            plt.subplot(120 + i + 1)
+            plt.imshow(result.original_images_clipped[i])
+            plt.scatter(
+                *result.keypoints[i].T[::-1],
+                c='yellow',
+                marker='x',
+                s=500,
+                linewidths=3
+            )
+        plt.show()
+        pprint(result.keypoints)
 
 
 class PMDetector:
@@ -429,19 +453,7 @@ if __name__ == '__main__':
                 )
             )
 
-            plt.figure(figsize=(16, 8))
-            for i in range(2):
-                plt.subplot(120 + i + 1)
-                plt.imshow(result.original_images_clipped[i])
-                plt.scatter(
-                    *result.keypoints[i].T[::-1],
-                    c='yellow',
-                    marker='x',
-                    s=500,
-                    linewidths=3
-                )
-            plt.show()
-            pprint(result.keypoints)
+            PMDetectorTester.test_detect_keypoints(result)
 
 
     main()
