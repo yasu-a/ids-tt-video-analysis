@@ -19,32 +19,32 @@ from train_input import RectNormalized
 @dataclass(frozen=True)
 class PMDetectorParameter:
     # 与えられた画像にかける平均値フィルタの大きさ`画像サイズ // mean_filter_size_factor`
-    mean_filter_size_factor = 32
+    mean_filter_size_factor: int = 32
 
     # 輝度極大点を求めるときに`skimage.feature.peak_local_max`の引数`min_distance`に
     # 与える値`画像サイズ // local_max_distance_factor`
-    local_max_distance_factor = 32
+    local_max_distance_factor: int = 32
 
     # 輝度極大点を求めるときに極大点の対象とする最小輝度
-    motion_local_max_thresh = 0.03
+    motion_local_max_thresh: float = 0.03
 
     # キーフレームの相互マッチングのときに，cos距離がこの値以下のマッチングが対象となる。
     # cos距離は`1 - np.clip(cos_distance, 0, 1)`で算出され，0に近いほうが距離が近い。
-    mutual_match_max_cos_distance = 0.3
+    mutual_match_max_cos_distance: float = 0.3
 
     # 切り出すキーフレームの大きさで，中心点から±`key_image_size`の範囲が切り出される。
     # 実際に切り出されるキーフレームの大きさは`key_image_size * 2 + 1`
     key_image_size: int = 32
 
     # これ以上の動きを持つモーションはエラーとして除外する
-    max_velocity = 20
+    max_velocity: int = 20
 
     # Motion-centroid-correctionを行うかどうか
-    enable_motion_correction = True
+    enable_motion_correction: bool = True
 
     # Motion-centroid-correctionでテンプレートマッチの結果にかける円フィルタの半径」
     # もとのキーフレームの矩形の大きさ//2に対する比率
-    centroid_correction_template_match_filter_radius_ratio = 0.5
+    centroid_correction_template_match_filter_radius_ratio: float = 0.5
 
 
 def _check_dtype_and_shape(dtype, shape):
@@ -208,6 +208,7 @@ class PMDetectorResult:
     keyframes: list[np.ndarray]
     match_index_pair: np.ndarray
     distance_matrix: np.ndarray
+    local_centroid: np.ndarray  # centroids in rect coordinate
 
     def __init__(self):
         self.__field_names = type(self).__annotations__.keys()
@@ -226,11 +227,16 @@ class PMDetectorResult:
         assert self.keypoints is not None
         return all(keypoints.size > 0 for keypoints in self.keypoints)
 
+    @functools.cached_property
+    def n_matches(self):
+        assert self.match_index_pair is not None
+        return len(self.match_index_pair.T)
+
 
 class PMComputer:
     def __init__(self, parameter: PMDetectorParameter, source: PMDetectorInput):
         self._p = parameter
-        self.__src = source
+        self._input = source
         self._result = PMDetectorResult()
 
     def __extract_key_frame_around(self, image, index_axis_1, index_axis_2):
@@ -271,10 +277,10 @@ class PMComputer:
             return None
 
     def __array_checkers_for_detect_keypoints(self):
-        height = self.__src.height
-        width = self.__src.width
-        rect_height = self.__src.rect_actual_scaled.size.y
-        rect_width = self.__src.rect_actual_scaled.size.x
+        height = self._input.height
+        width = self._input.width
+        rect_height = self._input.rect_actual_scaled.size.y
+        rect_width = self._input.rect_actual_scaled.size.x
 
         @dataclass(frozen=True)
         class ArrayCheckersForDetectKeypoints:
@@ -308,14 +314,14 @@ class PMComputer:
 
         # generate clip index (time-axis, y-axis(height), x-axis(width), channel-axis)
         detection_region_clip_index \
-            = slice(None, None), *self.__src.rect_actual_scaled.index3d
+            = slice(None, None), *self._input.rect_actual_scaled.index3d
 
         # *** focus on the original frame images
 
         # stack original images along time-axis
         original_images = np.stack([
-            self.__src.target_frame.original_image,
-            self.__src.next_frame.original_image
+            self._input.target_frame.original_image,
+            self._input.next_frame.original_image
         ])
         check.ui8_2hw3(original_images)
 
@@ -333,8 +339,8 @@ class PMComputer:
 
         # stack diff images along time-axis
         diff_images = np.stack([
-            self.__src.target_frame.diff_image,
-            self.__src.next_frame.diff_image
+            self._input.target_frame.diff_image,
+            self._input.next_frame.diff_image
         ])
         check.ui8_2hw3(diff_images)
 
@@ -363,7 +369,7 @@ class PMComputer:
 
         # generate mean filter matrix
         filter_shape = np.array(
-            self.__src.rect_actual_scaled.size) // self._p.mean_filter_size_factor
+            self._input.rect_actual_scaled.size) // self._p.mean_filter_size_factor
         filter_matrix = np.ones(filter_shape, dtype=np.float32)
         filter_matrix /= filter_matrix.sum()
         assert np.isclose(filter_matrix.sum(), 1), filter_matrix.sum()
@@ -529,53 +535,54 @@ class PMComputer:
     def _correct_motion_centroid(self, keyframe_src: np.ndarray, keyframe_dst: np.ndarray):
         keyframe_pair = [keyframe_src, keyframe_dst]
 
+        # This method does not produces valuable difference
         # process keyframes
-        for i in range(2):
-            keyframe = keyframe_pair[i]
-
-            # convert to grayscale
-            keyframe = keyframe.mean(axis=-1)
-
-            # noinspection PyUnresolvedReferences
-            grad1 = scipy.ndimage.convolve(
-                keyframe,
-                cls._FILTER_GRAD_FIRST_AXIS,
-                mode='nearest'
-            )
-            # noinspection PyUnresolvedReferences
-            grad2 = scipy.ndimage.convolve(
-                keyframe,
-                cls._FILTER_GRAD_SECOND_AXIS,
-                mode='nearest'
-            )
-
-            # take geometric mean of vertical grad and horizontal grad
-            # TODO: proof of this method: take geometric mean of vertical grad and horizontal grad
-            gard_composite = np.sqrt(np.square(grad1) + np.square(grad2))
-
-            # take local mean of `gard_composite` image
-            gard_composite = skimage.filters.rank.mean(
-                skimage.util.img_as_ubyte(gard_composite),
-                np.ones((3, 3))
-            )
-
-            # filter keyframe by brighter pixels of `gard_composite`
-            mask = gard_composite > np.percentile(gard_composite, 50)
-            keyframe = np.where(np.tile(mask[..., None], 3), keyframe, 0)
-
-            keyframe_pair[i] = keyframe
+        # for i in range(2):
+        #     keyframe = keyframe_pair[i]
+        #
+        #     # convert to grayscale
+        #     keyframe_gray = keyframe.mean(axis=-1)
+        #
+        #     # noinspection PyUnresolvedReferences
+        #     grad1 = scipy.ndimage.convolve(
+        #         keyframe_gray,
+        #         self._FILTER_GRAD_FIRST_AXIS,
+        #         mode='nearest'
+        #     )
+        #     # noinspection PyUnresolvedReferences
+        #     grad2 = scipy.ndimage.convolve(
+        #         keyframe_gray,
+        #         self._FILTER_GRAD_SECOND_AXIS,
+        #         mode='nearest'
+        #     )
+        #
+        #     # take geometric mean of vertical grad and horizontal grad
+        #     # TODO: proof of this method: take geometric mean of vertical grad and horizontal grad
+        #     gard_composite = np.sqrt(np.square(grad1) + np.square(grad2))
+        #
+        #     # take local mean of `gard_composite` image
+        #     gard_composite = skimage.filters.rank.mean(
+        #         skimage.util.img_as_ubyte(gard_composite),
+        #         np.ones((3, 3))
+        #     )
+        #
+        #     # filter keyframe by brighter pixels of `gard_composite`
+        #     mask = gard_composite > np.percentile(gard_composite, 50)
+        #     keyframe = np.where(np.tile(mask[..., None], 3), keyframe, 0)
+        #
+        #     keyframe_pair[i] = keyframe
 
         # template match small regions of keyframes
         # noinspection PyTypeChecker
         tp: np.ndarray = skimage.feature.match_template(
-            keyframe_pair[1],
-            keyframe_pair[0],
+            image=keyframe_pair[1],
+            template=keyframe_pair[0],
             pad_input=True,
-            mode='constant'
-        )
+            mode='reflect'
+        )[:, :, 0]  # template match returns 3-dimensional array of same values
 
         # apply radius filter on match result
-        old_centroid = np.array(keyframe_dst.shape)[::-1] // 2
+        old_centroid = np.array(keyframe_dst.shape)[:-1] // 2
         x, y = np.meshgrid(np.arange(tp.shape[0]), np.arange(tp.shape[1]))
         x, y = x - old_centroid[0], y - old_centroid[1]
         rr = self._p.centroid_correction_template_match_filter_radius_ratio
@@ -585,26 +592,62 @@ class PMComputer:
         # extract best template match
         mask_max = tp == tp.max()
         if np.count_nonzero(mask_max) == 1:
-            # TODO: investigate shape; why np.where returns 3 dimensions
-            xs, ys, _ = np.where(mask_max)
+            xs, ys = np.where(mask_max)
             new_centroid = np.array([xs[0], ys[0]])
             correction = new_centroid - old_centroid
         else:
             # if no match exists, perform no correction
             correction = np.array([0, 0])
 
+        # plt.figure()
+        # plt.subplot(311)
+        # plt.imshow(keyframe_src)
+        # plt.scatter(keyframe_src.shape[0] // 2, keyframe_src.shape[1] // 2, color='yellow',
+        #             marker='x', s=300)
+        # plt.subplot(312)
+        # plt.imshow(keyframe_dst)
+        # plt.scatter([ys[0]], [xs[0]], color='yellow', marker='x', s=300)
+        # plt.subplot(313)
+        # plt.imshow(tp)
+        # plt.show()
+        # import time
+        # time.sleep(0.1)
+
         return correction
 
     def generate_motion_centroids(self):
-        pass
+        local_centroid = np.array([
+            [
+                self._result.keypoints[i][match_index]
+                for match_index in self._result.match_index_pair[i]
+            ] for i in range(2)
+        ])
+
+        _check_dtype_and_shape(
+            dtype=np.int64,
+            shape=(2, None, 2)
+        )
+
+        if self._p.enable_motion_correction:
+            corrections_for_each_match = []
+            for match_index_pair in self._result.match_index_pair.T:
+                keyframes = [self._result.keyframes[i][match_index_pair[i]] for i in range(2)]
+                correction = self._correct_motion_centroid(*keyframes)
+                corrections_for_each_match.append(correction)
+            corrections_for_each_match = np.stack(corrections_for_each_match)
+
+            # correct local center of second frame
+            local_centroid[1] += corrections_for_each_match
+
+        self._result.local_centroid = local_centroid
 
     def compute(self) -> PMDetectorResult:
         self.detect_keypoints()
         if self._result.contains_keypoints:
             self.extract_matches()
+            self.generate_motion_centroids()
         # noinspection PyProtectedMember
         self._result._freeze_fields()
-        print(self._result.match_index_pair)
         return self._result
 
 
@@ -627,7 +670,73 @@ class PMDetectorTester:
 
     @staticmethod
     def test_matches(result: PMDetectorResult):
-        pass
+        matches_tuple = {tuple(x) for x in result.match_index_pair.T}
+        n_keys_a, n_keys_b = map(len, result.keyframes)
+        fig, axes = plt.subplots(n_keys_a + 2, n_keys_b + 2, figsize=(40, 40))
+
+        from tqdm import tqdm
+
+        for i in tqdm(range(n_keys_a)):
+            for j in range(n_keys_b):
+                axes[i + 2, j + 2].bar([0], [result.distance_matrix[i, j]])
+                axes[i + 2, j + 2].set_ylim(0, 1)
+                if (i, j) in matches_tuple:
+                    axes[i + 2, j + 2].scatter([0], [0.5], color='red', s=500)
+
+        for i in range(n_keys_a):
+            axes[i + 2, 0].imshow(result.original_images_clipped[0])
+            axes[i + 2, 0].scatter(
+                result.keypoints[0][i, 1],
+                result.keypoints[0][i, 0],
+                color='yellow',
+                marker='x',
+                s=200
+            )
+            axes[i + 2, 1].imshow(result.keyframes[0][i])
+        for i in range(n_keys_b):
+            axes[0, i + 2].imshow(result.original_images_clipped[1])
+            axes[0, i + 2].scatter(
+                result.keypoints[1][i, 1],
+                result.keypoints[1][i, 0],
+                color='yellow',
+                marker='x',
+                s=200
+            )
+            axes[1, i + 2].imshow(result.keyframes[1][i])
+
+        for ax in axes.flatten():
+            ax.axis('off')
+        fig.tight_layout()
+        fig.savefig('local_max_feature_dist_mat.jpg')
+        fig.show()
+
+    @staticmethod
+    def test_local_centroids(result: PMDetectorResult):
+        plt.figure(figsize=(10, 5))
+        plt.subplot(1, 2, 1)
+        plt.imshow(result.original_images_clipped[0])
+        for i, mi in enumerate(result.match_index_pair[0]):
+            plt.scatter(
+                *result.local_centroid[0][i][::-1],
+                color='yellow',
+                marker='x',
+                s=200
+            )
+        plt.axis('off')
+
+        plt.subplot(1, 2, 2)
+        plt.imshow(result.original_images_clipped[1])
+        for i, mi in enumerate(result.match_index_pair[1]):
+            plt.scatter(
+                *result.local_centroid[1][i][::-1],
+                color='yellow',
+                marker='x',
+                s=200
+            )
+        plt.axis('off')
+
+        plt.tight_layout()
+        plt.show()
 
 
 class PMDetector:
@@ -650,7 +759,7 @@ if __name__ == '__main__':
         ) as snp_video_frame:
             assert isinstance(snp_video_frame, snp.NumpyStorage)
 
-            i = 180
+            i = 191
 
             snp_entry_target = snp_video_frame.get_entry(i)
             snp_entry_next = snp_video_frame.get_entry(i + 1)
@@ -658,7 +767,7 @@ if __name__ == '__main__':
             assert isinstance(snp_entry_next, snp_context.SNPEntryVideoFrame)
 
             detector: Optional[PMDetector] = PMDetector(
-                PMDetectorParameter()
+                PMDetectorParameter(enable_motion_correction=True)
             )
             result = detector.compute(
                 PMDetectorInput(
@@ -677,6 +786,10 @@ if __name__ == '__main__':
             )
 
             # PMDetectorTester.test_detect_keypoints(result)
+            # PMDetectorTester.test_matches(result)
+            PMDetectorTester.test_local_centroids(result)
+
+            # TODO: normalize result
 
 
     main()
