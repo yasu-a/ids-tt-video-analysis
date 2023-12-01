@@ -596,7 +596,7 @@ class PMComputer:
         return correction
 
     def generate_motion_centroids(self):
-
+        pass
 
     def compute(self) -> PMDetectorResult:
         self.detect_keypoints()
