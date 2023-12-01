@@ -10,6 +10,13 @@
     "DESKTOP-C4V3D9S": {
       ".comment": "Surface of yasu.a",
       ".inherit": "DESKTOP-O6M276J"
+    },
+    "YA-LENOVO": {
+      ".comment": "Lenovo IdeaPad Slim 5 of yasu.a",
+      ".inherit": "DESKTOP-O6M276J",
+      "data-location": "D:/idstt/video_analysis",
+      "debug-data-location": "D:/idstt/video_analysis/__debug__",
+      "video-location": "D:/idsttvideos/singles"
     }
   }
 }
