@@ -379,8 +379,36 @@ class PMComputer:
         # TODO: check for keyframes
         self.__result.keyframes = keyframes
 
+    @classmethod
+    def _split_3x3(cls, a):
+        n = a.shape[0] // 3  # assuming t.shape[0] == t.shape[1]
+        m = n * 2
+        slices = slice(None, n), slice(n, m), slice(m, None)
+        splits = [a[s1, s2] for s1 in slices for s2 in slices]
+        return splits
+
+    @classmethod
+    def _extract_match_feature(cls, image):
+        assert image.ndim == 3 and image.shape[-1] == 3, image.shape
+        feature = []
+        for ch in range(3):
+            image_single_ch = image[:, :, ch]  # extract each channel (R, G, B) of `image`
+            for p in cls._split_3x3(image_single_ch):
+                hist, _ = np.histogram(p, bins=16, range=(0, 1))
+                feature.append(hist)
+        total_feature = np.concatenate(feature)
+        return total_feature / total_feature.sum()
+
     def extract_matches(self):
-        print(self.__result.keyframes)
+        keyframes = self.__result.keyframes
+        assert keyframes is not None
+
+        features = [
+            list(map(self._extract_match_feature, keyframes[0])),
+            list(map(self._extract_match_feature, keyframes[1]))
+        ]
+
+        print(features[0][0])
         pass
 
     def compute(self) -> PMDetectorResult:
@@ -453,7 +481,7 @@ if __name__ == '__main__':
                 )
             )
 
-            PMDetectorTester.test_detect_keypoints(result)
+            # PMDetectorTester.test_detect_keypoints(result)
 
 
     main()
