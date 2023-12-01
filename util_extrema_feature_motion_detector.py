@@ -1,3 +1,4 @@
+import functools
 from dataclasses import dataclass
 from pprint import pprint
 from typing import Optional
@@ -6,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage
 import skimage.feature
+from sklearn.metrics.pairwise import cosine_similarity
 
 import npstorage_context as snp_context
 import storage
@@ -39,6 +41,10 @@ class PMDetectorParameter:
 
     # Motion-centroid-correctionを行うかどうか
     enable_motion_correction = True
+
+    # Motion-centroid-correctionでテンプレートマッチの結果にかける円フィルタの半径」
+    # もとのキーフレームの矩形の大きさ//2に対する比率
+    centroid_correction_template_match_filter_radius_ratio = 0.5
 
 
 def _check_dtype_and_shape(dtype, shape):
@@ -175,24 +181,63 @@ class PMDetectorInput:
         assert isinstance(detection_rect_normalized, RectNormalized), detection_rect_normalized
 
 
+class OneWriteManyReadDescriptor:
+    def __init__(self, default):
+        self.__value = default
+        self.__value_set = False
+
+    def freeze(self):
+        self.__value_set = True
+
+    def __get__(self, obj, owner=None):
+        if not self.__value_set:
+            raise ValueError('attribute not set')
+        return self.__value
+
+    def __set__(self, obj, value):
+        if self.__value_set:
+            raise ValueError('attribute is read-only; only one write to attribute allowed')
+        self.__value = value
+        self.freeze()
+
+
 class PMDetectorResult:
-    original_images_clipped: np.ndarray = None
-    diff_images_clipped: np.ndarray = None
-    keypoints: list[np.ndarray] = None
-    keyframes: list[np.ndarray] = None
+    original_images_clipped: np.ndarray
+    diff_images_clipped: np.ndarray
+    keypoints: list[np.ndarray]
+    keyframes: list[np.ndarray]
+    match_index_pair: np.ndarray
+    distance_matrix: np.ndarray
+
+    def __init__(self):
+        self.__field_names = type(self).__annotations__.keys()
+        self.__descriptors = []
+        for field_name in self.__field_names:
+            field_accessor = OneWriteManyReadDescriptor(default=None)
+            self.__descriptors.append(field_accessor)
+            setattr(self, field_name, field_accessor)
+
+    def _freeze_fields(self):
+        for accessor in self.__descriptors:
+            accessor.freeze()
+
+    @functools.cached_property
+    def contains_keypoints(self):
+        assert self.keypoints is not None
+        return all(keypoints.size > 0 for keypoints in self.keypoints)
 
 
 class PMComputer:
     def __init__(self, parameter: PMDetectorParameter, source: PMDetectorInput):
-        self.__p = parameter
+        self._p = parameter
         self.__src = source
-        self.__result = PMDetectorResult()
+        self._result = PMDetectorResult()
 
     def __extract_key_frame_around(self, image, index_axis_1, index_axis_2):
         assert image.ndim == 3, image.shape
 
         # decide the size of padding
-        size = self.__p.key_image_size
+        size = self._p.key_image_size
 
         # pad source image
         # noinspection PyTypeChecker
@@ -318,7 +363,7 @@ class PMComputer:
 
         # generate mean filter matrix
         filter_shape = np.array(
-            self.__src.rect_actual_scaled.size) // self.__p.mean_filter_size_factor
+            self.__src.rect_actual_scaled.size) // self._p.mean_filter_size_factor
         filter_matrix = np.ones(filter_shape, dtype=np.float32)
         filter_matrix /= filter_matrix.sum()
         assert np.isclose(filter_matrix.sum(), 1), filter_matrix.sum()
@@ -337,7 +382,7 @@ class PMComputer:
         for i in range(2):
             keypoints[i] = skimage.feature.peak_local_max(
                 diff_images[i],
-                min_distance=max(diff_images[i].shape) // self.__p.local_max_distance_factor
+                min_distance=max(diff_images[i].shape) // self._p.local_max_distance_factor
             )
 
             # peak_local_max() returns the local maximum point in the order of
@@ -363,58 +408,204 @@ class PMComputer:
                 dtype=np.float32,
                 shape=(
                     None,
-                    self.__p.key_image_size * 2 + 1,
-                    self.__p.key_image_size * 2 + 1,
+                    self._p.key_image_size * 2 + 1,
+                    self._p.key_image_size * 2 + 1,
                     3
                 )
             )(keyframes[i])
 
         # *** set the whole result in this section
         check.f32_2hw3_clipped(original_images)
-        self.__result.original_images_clipped = original_images
+        self._result.original_images_clipped = original_images
         check.f32_2hw_clipped(diff_images)
-        self.__result.diff_images_clipped = diff_images
+        self._result.diff_images_clipped = diff_images
         # TODO: check for keypoints
-        self.__result.keypoints = keypoints
+        self._result.keypoints = keypoints
         # TODO: check for keyframes
-        self.__result.keyframes = keyframes
+        self._result.keyframes = keyframes
 
     @classmethod
-    def _split_3x3(cls, a):
-        n = a.shape[0] // 3  # assuming t.shape[0] == t.shape[1]
+    def _split_single_channel_image_3x3(cls, image) -> list[np.ndarray]:
+        assert image.ndim == 2, image.shape
+        n = image.shape[0] // 3  # assuming t.shape[0] == t.shape[1]
         m = n * 2
         slices = slice(None, n), slice(n, m), slice(m, None)
-        splits = [a[s1, s2] for s1 in slices for s2 in slices]
+        splits = [image[s1, s2] for s1 in slices for s2 in slices]  # flatten
         return splits
 
     @classmethod
-    def _extract_match_feature(cls, image):
+    def _split_image_3x3(cls, image) -> list[list[np.ndarray]]:
         assert image.ndim == 3 and image.shape[-1] == 3, image.shape
-        feature = []
-        for ch in range(3):
-            image_single_ch = image[:, :, ch]  # extract each channel (R, G, B) of `image`
-            for p in cls._split_3x3(image_single_ch):
-                hist, _ = np.histogram(p, bins=16, range=(0, 1))
-                feature.append(hist)
-        total_feature = np.concatenate(feature)
-        return total_feature / total_feature.sum()
-
-    def extract_matches(self):
-        keyframes = self.__result.keyframes
-        assert keyframes is not None
-
-        features = [
-            list(map(self._extract_match_feature, keyframes[0])),
-            list(map(self._extract_match_feature, keyframes[1]))
+        return [
+            cls._split_single_channel_image_3x3(image[:, :, ch])
+            for ch in range(3)  # extract each channel (R, G, B) of `image`
         ]
 
-        print(features[0][0])
-        pass
+    @classmethod
+    def _extract_gray_distribution_feature(cls, image, n_bins):
+        assert image.ndim == 2, image.shape
+
+        # this method is faster than np.histogram()
+
+        # convert image to integer of [0, n_bins)
+        digitized_image = (image * n_bins).astype(np.int8)
+        assert np.all((0 <= digitized_image) & (digitized_image < n_bins))
+
+        # count each value
+        values, counts = np.unique(digitized_image, return_counts=True)
+
+        # make histogram
+        hist = np.zeros(n_bins)
+        hist[values] = counts
+
+        return hist
+
+    @classmethod
+    def _extract_feature_for_matching(cls, image):
+        assert image.ndim == 3 and image.shape[-1] == 3, image.shape
+        image_split = cls._split_image_3x3(image)
+        feature = np.concatenate([
+            cls._extract_gray_distribution_feature(p, n_bins=16)
+            for channel_split in image_split
+            for p in channel_split
+        ])
+        feature_normalized = feature / feature.sum()
+        return feature_normalized
+
+    def _find_mutual_best_match(self, dist_mat):
+        # distance matrix has 2 dimensions, 1st dim and 2nd dim
+        assert dist_mat.ndim == 2, dist_mat.shape
+
+        # generate index vector of 1st dim and 2nd dim
+        index_dim1 = np.arange(dist_mat.shape[0])
+        index_dim2 = np.arange(dist_mat.shape[1])
+
+        # find one-sided love
+        best_forward = dist_mat.argmin(axis=1)  # dist_mat 1st dim to 2nd dim
+        best_backward = dist_mat.argmin(axis=0)  # dist_mat 2nd dim to 1st dim
+
+        # find mutual love
+        mutual_love_dim1to2 = best_backward[best_forward] == index_dim1
+        best_index_dim1to2 = index_dim1[mutual_love_dim1to2]
+        best_index_dim2to1 = index_dim2[best_forward[mutual_love_dim1to2]]
+        assert best_index_dim1to2.shape == best_index_dim2to1.shape, \
+            (best_index_dim1to2.shape, best_index_dim2to1.shape)
+
+        # check the distance is better than global parameter `mutual_match_max_cos_distance`
+        distance = dist_mat[best_index_dim1to2, best_index_dim2to1]
+        mask = distance < self._p.mutual_match_max_cos_distance
+        best_index_dim1to2 = best_index_dim1to2[mask]
+        best_index_dim2to1 = best_index_dim2to1[mask]
+
+        return np.stack([best_index_dim1to2, best_index_dim2to1])
+
+    def extract_matches(self):
+        keyframes = self._result.keyframes
+        assert keyframes is not None
+
+        # extract feature vectors of key-frames for matching
+        features = [
+            list(map(self._extract_feature_for_matching, keyframes[0])),
+            list(map(self._extract_feature_for_matching, keyframes[1]))
+        ]
+
+        # calculate distance matrix with the extracted feature vectors above
+        dist_mat_cos = cosine_similarity(*features)
+        dist_mat = 1 - np.clip(dist_mat_cos, a_min=0, a_max=1)
+
+        # find mutual match
+        match_index_pair = self._find_mutual_best_match(dist_mat)
+
+        self._result.match_index_pair = match_index_pair
+        self._result.distance_matrix = dist_mat
+
+    _FILTER_GRAD_FIRST_AXIS = np.array([
+        [0, 0, 0],
+        [+0.5, 0, -0.5],
+        [0, 0, 0]
+    ])
+    _FILTER_GRAD_SECOND_AXIS = _FILTER_GRAD_FIRST_AXIS.T
+
+    def _correct_motion_centroid(self, keyframe_src: np.ndarray, keyframe_dst: np.ndarray):
+        keyframe_pair = [keyframe_src, keyframe_dst]
+
+        # process keyframes
+        for i in range(2):
+            keyframe = keyframe_pair[i]
+
+            # convert to grayscale
+            keyframe = keyframe.mean(axis=-1)
+
+            # noinspection PyUnresolvedReferences
+            grad1 = scipy.ndimage.convolve(
+                keyframe,
+                cls._FILTER_GRAD_FIRST_AXIS,
+                mode='nearest'
+            )
+            # noinspection PyUnresolvedReferences
+            grad2 = scipy.ndimage.convolve(
+                keyframe,
+                cls._FILTER_GRAD_SECOND_AXIS,
+                mode='nearest'
+            )
+
+            # take geometric mean of vertical grad and horizontal grad
+            # TODO: proof of this method: take geometric mean of vertical grad and horizontal grad
+            gard_composite = np.sqrt(np.square(grad1) + np.square(grad2))
+
+            # take local mean of `gard_composite` image
+            gard_composite = skimage.filters.rank.mean(
+                skimage.util.img_as_ubyte(gard_composite),
+                np.ones((3, 3))
+            )
+
+            # filter keyframe by brighter pixels of `gard_composite`
+            mask = gard_composite > np.percentile(gard_composite, 50)
+            keyframe = np.where(np.tile(mask[..., None], 3), keyframe, 0)
+
+            keyframe_pair[i] = keyframe
+
+        # template match small regions of keyframes
+        # noinspection PyTypeChecker
+        tp: np.ndarray = skimage.feature.match_template(
+            keyframe_pair[1],
+            keyframe_pair[0],
+            pad_input=True,
+            mode='constant'
+        )
+
+        # apply radius filter on match result
+        old_centroid = np.array(keyframe_dst.shape)[::-1] // 2
+        x, y = np.meshgrid(np.arange(tp.shape[0]), np.arange(tp.shape[1]))
+        x, y = x - old_centroid[0], y - old_centroid[1]
+        rr = self._p.centroid_correction_template_match_filter_radius_ratio
+        r = int(tp.shape[0] * rr) // 2
+        tp[x * x + y * y > r * r] = 0
+
+        # extract best template match
+        mask_max = tp == tp.max()
+        if np.count_nonzero(mask_max) == 1:
+            # TODO: investigate shape; why np.where returns 3 dimensions
+            xs, ys, _ = np.where(mask_max)
+            new_centroid = np.array([xs[0], ys[0]])
+            correction = new_centroid - old_centroid
+        else:
+            # if no match exists, perform no correction
+            correction = np.array([0, 0])
+
+        return correction
+
+    def generate_motion_centroids(self):
+
 
     def compute(self) -> PMDetectorResult:
         self.detect_keypoints()
-        self.extract_matches()
-        return self.__result
+        if self._result.contains_keypoints:
+            self.extract_matches()
+        # noinspection PyProtectedMember
+        self._result._freeze_fields()
+        print(self._result.match_index_pair)
+        return self._result
 
 
 class PMDetectorTester:
@@ -433,6 +624,10 @@ class PMDetectorTester:
             )
         plt.show()
         pprint(result.keypoints)
+
+    @staticmethod
+    def test_matches(result: PMDetectorResult):
+        pass
 
 
 class PMDetector:
