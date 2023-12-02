@@ -1,4 +1,10 @@
+DO_TYPE_CHECK = False
+
+
 def check_dtype_and_shape(dtype, shape):
+    if not DO_TYPE_CHECK:
+        return lambda *_, **__: None
+
     def checker(a):
         if not isinstance(dtype, tuple):
             dtype_normalized = dtype,

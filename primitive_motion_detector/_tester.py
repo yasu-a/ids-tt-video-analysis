@@ -2,7 +2,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 import app_logging
-from primitive_motion_detector import PMDetectorSource, PMDetectorResult
+from ._result import PMDetectorResult
+from ._source import PMDetectorSource
 
 
 class PMDetectorTester:
@@ -14,12 +15,25 @@ class PMDetectorTester:
     def test_all(self):
         self._logger.info('test_all')
 
+        # extract tester's method instance and lineno
+        testers = {}
         for field_name in dir(self):
             if not field_name.startswith('test_'):
                 continue
             if field_name == 'test_all':
                 continue
-            getattr(self, field_name)()
+            field_value = getattr(self, field_name)
+            testers[field_name] = dict(
+                func=field_value,
+                lineno=field_value.__func__.__code__.co_firstlineno
+            )
+
+        # sort by lineno
+        testers_sorted = sorted(testers.items(), key=lambda x: x[1]['lineno'])
+
+        # dispatch tests
+        for _, tester_entry in testers_sorted:
+            tester_entry['func']()
 
     def test_detect_keypoints(self):
         self._logger.info('test_detect_keypoints')
@@ -32,10 +46,9 @@ class PMDetectorTester:
                 *self._result.keypoints[i].T[::-1],
                 c='yellow',
                 marker='x',
-                s=500,
+                s=200,
                 linewidths=3
             )
-            plt.axis('off')
         plt.suptitle('test_detect_keypoints')
         plt.tight_layout()
         plt.show()
@@ -99,7 +112,6 @@ class PMDetectorTester:
                     marker='x',
                     s=200
                 )
-            plt.axis('off')
 
         plt.suptitle('test_local_centroids')
         plt.tight_layout()
@@ -121,7 +133,6 @@ class PMDetectorTester:
                     marker='x',
                     s=200
                 )
-            plt.axis('off')
 
         plt.suptitle('test_global_centroids')
         plt.tight_layout()
@@ -145,7 +156,6 @@ class PMDetectorTester:
                     marker='x',
                     s=200
                 )
-            # plt.axis('off')
 
         plt.suptitle('test_local_centroids_normalized')
         plt.tight_layout()
@@ -157,7 +167,7 @@ class PMDetectorTester:
         plt.figure(figsize=(8, 8))
 
         plt.imshow(self._result.original_images_clipped[0])
-        for j, (mi1, mi2) in enumerate(self._result.match_index_pair.T):
+        for j in range(len(self._result.match_index_pair.T)):
             xy1 = self._result.local_centroid[0][j][::-1]
             xy2 = self._result.local_centroid[1][j][::-1]
             plt.scatter(
