@@ -128,14 +128,14 @@ class RectActualScaled(NamedTuple):
         """
         return self.index2d[0], self.index2d[1], slice(None, None)
 
-    def normalize_points_inside_based_on_origin(self, points: np.ndarray) \
+    def normalize_points_inside_based_on_origin(self, points_xy: np.ndarray) \
             -> np.ndarray:
         # check the shape of input array
-        assert points.ndim == 2 and points.shape[1] == 2, points
+        assert points_xy.ndim == 2 and points_xy.shape[1] == 2, points_xy
 
         # extract the values of x-axis and y-axis
-        points_x = points[:, 0]
-        points_y = points[:, 1]
+        points_x = points_xy[:, 0]
+        points_y = points_xy[:, 1]
 
         # check if the values of x-axis and y-axis are inside the rect
         assert np.all((self.p_min.x <= points_x) & (points_x < self.p_max.x)), \
@@ -149,14 +149,16 @@ class RectActualScaled(NamedTuple):
 
         # generate normalized array
         result = np.concatenate([normalized_x[:, None], normalized_y[:, None]], axis=1)
-        assert points.shape == result.shape, (points.shape, result.shape)
+        assert points_xy.shape == result.shape, (points_xy.shape, result.shape)
 
         return result
 
-    def normalize_points_inside_based_on_corner(self, points_based_on_top_left_corner: np.ndarray) \
-            -> np.ndarray:
+    def normalize_points_inside_based_on_corner(
+            self,
+            points_xy_based_on_top_left_corner: np.ndarray
+    ) -> np.ndarray:
         return self.normalize_points_inside_based_on_origin(
-            points_based_on_top_left_corner + self.scale
+            points_xy_based_on_top_left_corner + self.p_min
         )
 
 
