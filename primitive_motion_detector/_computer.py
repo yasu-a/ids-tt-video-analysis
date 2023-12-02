@@ -166,7 +166,7 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
             keypoints[i] = skimage.feature.peak_local_max(
                 diff_images[i],
                 min_distance=max(diff_images[i].shape) // self._p.local_max_distance_factor
-            )  # [N_KEYPOINTS, (Y, X)]
+            )  # (<number of local maxima>, [y, x])
 
             # peak_local_max() returns the local maximum point in the order of
             # (height, width), which match our expectation
@@ -175,7 +175,7 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
 
             check_dtype_and_shape(
                 dtype=np.int64,
-                shape=(None, 2)  # (<number of local maxima>, [x, y])
+                shape=(None, 2)  # (<number of local maxima>, [y, x])
             )(keypoints[i])
 
         # *** extract key frames
