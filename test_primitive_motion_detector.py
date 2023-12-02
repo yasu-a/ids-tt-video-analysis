@@ -18,7 +18,7 @@ if __name__ == '__main__':
         ) as snp_video_frame:
             assert isinstance(snp_video_frame, snp.NumpyStorage)
 
-            i = 191
+            i = 220
 
             snp_entry_target = snp_video_frame.get_entry(i)
             snp_entry_next = snp_video_frame.get_entry(i + 1)
@@ -45,6 +45,7 @@ if __name__ == '__main__':
 
             tester = PMDetectorTester(source=source, result=result)
             tester.test_all()
+            # tester.test_centroid_delta()
 
             # TODO: normalize result
 

@@ -1,3 +1,4 @@
+import numpy as np
 from matplotlib import pyplot as plt
 
 import app_logging
@@ -145,6 +146,44 @@ class PMDetectorTester:
                     s=200
                 )
             # plt.axis('off')
+
+        plt.suptitle('test_local_centroids_normalized')
+        plt.tight_layout()
+        plt.show()
+
+    def test_centroid_delta(self):
+        self._logger.info('test_centroid_delta')
+
+        plt.figure(figsize=(8, 8))
+
+        plt.imshow(self._result.original_images_clipped[0])
+        for j, (mi1, mi2) in enumerate(self._result.match_index_pair.T):
+            xy1 = self._result.local_centroid[0][j][::-1]
+            xy2 = self._result.local_centroid[1][j][::-1]
+            plt.scatter(
+                *xy1,
+                color='#003333',
+                s=80
+            )
+            if not np.isclose(np.linalg.norm(xy2 - xy1), 0):
+                plt.arrow(
+                    *xy1,
+                    *(xy2 - xy1),
+                    color='#003333',
+                    width=2
+                )
+            plt.scatter(
+                *xy1,
+                color='#00FFFF',
+                s=40
+            )
+            if not np.isclose(np.linalg.norm(xy2 - xy1), 0):
+                plt.arrow(
+                    *xy1,
+                    *(xy2 - xy1),
+                    color='#00FFFF',
+                    width=1
+                )
 
         plt.suptitle('test_local_centroids_normalized')
         plt.tight_layout()
