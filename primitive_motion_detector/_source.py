@@ -91,7 +91,12 @@ class PMDetectorSource:
     def frame_shape(self):
         return self.target_frame.frame_shape
 
-    def __init__(self, target_frame, next_frame, detection_rect_normalized):
+    def __init__(
+            self,
+            target_frame: PMDetectorSourceTimeSeriesEntry,
+            next_frame: PMDetectorSourceTimeSeriesEntry,
+            detection_rect_normalized: RectNormalized
+    ):
         # noinspection GrazieInspection
         """
         PMDetectorの入力データ

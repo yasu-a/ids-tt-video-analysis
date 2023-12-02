@@ -63,21 +63,25 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
 
         @dataclass(frozen=True)
         class ArrayCheckersForDetectKeypoints:
-            ui8_2hw3 = check_dtype_and_shape(
-                dtype=np.uint8,
-                shape=(2, height, width, 3)
-            )
             f32_2hw3_clipped = check_dtype_and_shape(
                 dtype=np.float32,
-                shape=(2, rect_height, rect_width, 3)
-            )
-            ui8_2hw3_clipped = check_dtype_and_shape(
-                dtype=np.uint8,
                 shape=(2, rect_height, rect_width, 3)
             )
             f32_2hw_clipped = check_dtype_and_shape(
                 dtype=np.float32,
                 shape=(2, rect_height, rect_width)
+            )
+            ui8_4hw3 = check_dtype_and_shape(
+                dtype=np.uint8,
+                shape=(4, height, width, 3)
+            )
+            f32_4hw3_clipped = check_dtype_and_shape(
+                dtype=np.float32,
+                shape=(4, rect_height, rect_width, 3)
+            )
+            ui8_4hw3_clipped = check_dtype_and_shape(
+                dtype=np.uint8,
+                shape=(4, rect_height, rect_width, 3)
             )
 
         return ArrayCheckersForDetectKeypoints
@@ -95,42 +99,36 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
         detection_region_clip_index \
             = slice(None, None), *self._input.rect_actual_scaled.index3d
 
+        # *** process images
+        # stack source images
+        source_images = np.stack([
+            self._input.target_frame.original_image,
+            self._input.next_frame.original_image,
+            self._input.target_frame.diff_image,
+            self._input.next_frame.diff_image
+        ])
+        check.ui8_4hw3(source_images)
+
+        # clip by detection region
+        source_images = source_images[detection_region_clip_index]
+        check.ui8_4hw3_clipped(source_images)
+
+        # convert rgb-values from uint8 to normalized float
+        source_images = source_images.astype(np.float32) / 256.0
+        assert 0 <= source_images.min() and source_images.max() < 1, \
+            (source_images.min(), source_images.max())
+        check.f32_4hw3_clipped(source_images)
+
         # *** focus on the original frame images
 
         # stack original images along time-axis
-        original_images = np.stack([
-            self._input.target_frame.original_image,
-            self._input.next_frame.original_image
-        ])
-        check.ui8_2hw3(original_images)
-
-        # clip by detection region
-        original_images = original_images[detection_region_clip_index]
-        check.ui8_2hw3_clipped(original_images)
-
-        # convert rgb-values from uint8 to normalized float
-        original_images = original_images.astype(np.float32) / 256.0
-        assert 0 <= original_images.min() and original_images.max() < 1, \
-            (original_images.min(), original_images.max())
+        original_images = source_images[:2]
         check.f32_2hw3_clipped(original_images)
 
         # *** focus on the diff images
 
         # stack diff images along time-axis
-        diff_images = np.stack([
-            self._input.target_frame.diff_image,
-            self._input.next_frame.diff_image
-        ])
-        check.ui8_2hw3(diff_images)
-
-        # clip by detection region
-        diff_images = diff_images[detection_region_clip_index]
-        check.ui8_2hw3_clipped(diff_images)
-
-        # convert rgb-values from uint8 to normalized float
-        diff_images = diff_images.astype(np.float32) / 256.0
-        assert 0 <= diff_images.min() and diff_images.max() < 1, \
-            (diff_images.min(), diff_images.max())
+        diff_images = source_images[2:]
         check.f32_2hw3_clipped(diff_images)
 
         # convert rgb channels to grayscale

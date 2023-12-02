@@ -6,7 +6,7 @@ from primitive_motion_detector import PMDetectorSource, PMDetectorResult
 
 class PMDetectorTester:
     def __init__(self, source: PMDetectorSource, result: PMDetectorResult):
-        self._source = source
+        self._src = source
         self._result = result
         self._logger = app_logging.create_logger(f'{__name__}#Tester')
 
@@ -111,8 +111,8 @@ class PMDetectorTester:
 
         for i in range(2):
             plt.subplot(1, 2, i + 1)
-            plt.imshow([self._source.target_frame.original_image,
-                        self._source.next_frame.original_image][i])
+            plt.imshow([self._src.target_frame.original_image,
+                        self._src.next_frame.original_image][i])
             for j, mi in enumerate(self._result.match_index_pair[i]):
                 plt.scatter(
                     *self._result.global_centroid[i][j][::-1],
@@ -133,11 +133,11 @@ class PMDetectorTester:
 
         for i in range(2):
             plt.subplot(1, 2, i + 1)
-            plt.imshow([self._source.target_frame.original_image,
-                        self._source.next_frame.original_image][i])
+            plt.imshow([self._src.target_frame.original_image,
+                        self._src.next_frame.original_image][i])
             for j, mi in enumerate(self._result.match_index_pair[i]):
                 xy = self._result.local_centroid_normalized[i][j][::-1]
-                xy = xy * self._source.rect_actual_scaled.size + self._source.rect_actual_scaled.p_min
+                xy = xy * self._src.rect_actual_scaled.size + self._src.rect_actual_scaled.p_min
                 plt.scatter(
                     *xy,
                     color='yellow',

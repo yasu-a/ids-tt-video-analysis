@@ -1,4 +1,6 @@
-from primitive_motion_detector import PMDetectorParameter, PMDetectorSource, PMComputer
+from ._computer import PMComputer
+from ._parameter import PMDetectorParameter
+from ._source import PMDetectorSource
 
 
 class PMDetector:

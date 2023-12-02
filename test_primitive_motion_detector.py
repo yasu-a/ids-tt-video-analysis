@@ -4,10 +4,7 @@ import npstorage_context as snp_context
 import storage
 import storage.npstorage as snp
 import train_input
-from primitive_motion_detector import PMDetectorParameter, PMDetectorSourceTimeSeriesEntry, \
-    PMDetectorSource
-from primitive_motion_detector._detector import PMDetector
-from primitive_motion_detector._tester import PMDetectorTester
+from primitive_motion_detector import *
 
 if __name__ == '__main__':
     def main():
