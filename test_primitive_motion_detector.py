@@ -4,7 +4,10 @@ import npstorage_context as snp_context
 import storage
 import storage.npstorage as snp
 import train_input
-from primitive_motion_detector import *
+from primitive_motion_detector import PMDetectorParameter, PMDetectorSourceTimeSeriesEntry, \
+    PMDetectorSource
+from primitive_motion_detector._detector import PMDetector
+from primitive_motion_detector._tester import PMDetectorTester
 
 if __name__ == '__main__':
     def main():
@@ -28,13 +31,13 @@ if __name__ == '__main__':
             detector: Optional[PMDetector] = PMDetector(
                 PMDetectorParameter(enable_motion_correction=True)
             )
-            source = PMDetectorInput(
-                target_frame=PMDetectorInputTimeSeriesEntry(
+            source = PMDetectorSource(
+                target_frame=PMDetectorSourceTimeSeriesEntry(
                     original_image=snp_entry_target.original,
                     diff_image=snp_entry_target.motion,
                     timestamp=float(snp_entry_target.timestamp)
                 ),
-                next_frame=PMDetectorInputTimeSeriesEntry(
+                next_frame=PMDetectorSourceTimeSeriesEntry(
                     original_image=snp_entry_next.original,
                     diff_image=snp_entry_next.motion,
                     timestamp=float(snp_entry_next.timestamp)

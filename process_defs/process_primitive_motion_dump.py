@@ -10,7 +10,7 @@ import process
 import storage
 import storage.npstorage as snp
 import train_input
-from primitive_motion_detector import PMDetector
+from primitive_motion_detector._detector import PMDetector
 from train_input import RectActualScaled
 
 logger = app_logging.create_logger(__name__)
