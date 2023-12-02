@@ -12,9 +12,9 @@ from ._util import check_dtype_and_shape
 
 
 class _PMComputerStubs:
-    _p: PMDetectorParameter
-    _input: PMDetectorSource
-    _result: PMDetectorResult
+    p: PMDetectorParameter
+    source: PMDetectorSource
+    result: PMDetectorResult
 
 
 class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
@@ -22,7 +22,7 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
         assert image.ndim == 3, image.shape
 
         # decide the size of padding
-        size = self._p.key_image_size
+        size = self.p.key_image_size
 
         # pad source image
         # noinspection PyTypeChecker
@@ -56,10 +56,10 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
             return None
 
     def __array_checkers_for_detect_keypoints(self):
-        height = self._input.height
-        width = self._input.width
-        rect_height = self._input.rect_actual_scaled.size.y
-        rect_width = self._input.rect_actual_scaled.size.x
+        height = self.source.height
+        width = self.source.width
+        rect_height = self.source.rect_actual_scaled.size.y
+        rect_width = self.source.rect_actual_scaled.size.x
 
         @dataclass(frozen=True)
         class ArrayCheckersForDetectKeypoints:
@@ -97,15 +97,15 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
 
         # generate clip index (time-axis, y-axis(height), x-axis(width), channel-axis)
         detection_region_clip_index \
-            = slice(None, None), *self._input.rect_actual_scaled.index3d
+            = slice(None, None), *self.source.rect_actual_scaled.index3d
 
         # *** process images
         # stack source images
         source_images = np.stack([
-            self._input.target_frame.original_image,
-            self._input.next_frame.original_image,
-            self._input.target_frame.diff_image,
-            self._input.next_frame.diff_image
+            self.source.target_frame.original_image,
+            self.source.next_frame.original_image,
+            self.source.target_frame.diff_image,
+            self.source.next_frame.diff_image
         ])
         check.ui8_4hw3(source_images)
 
@@ -146,7 +146,7 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
 
         # generate mean filter matrix
         filter_shape = np.array(
-            self._input.rect_actual_scaled.size) // self._p.mean_filter_size_factor
+            self.source.rect_actual_scaled.size) // self.p.mean_filter_size_factor
         filter_matrix = np.ones(filter_shape, dtype=np.float32)
         filter_matrix /= filter_matrix.sum()
         assert np.isclose(filter_matrix.sum(), 1), filter_matrix.sum()
@@ -165,7 +165,7 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
         for i in range(2):
             keypoints[i] = skimage.feature.peak_local_max(
                 diff_images[i],
-                min_distance=max(diff_images[i].shape) // self._p.local_max_distance_factor
+                min_distance=max(diff_images[i].shape) // self.p.local_max_distance_factor
             )  # (<number of local maxima>, [y, x])
 
             # peak_local_max() returns the local maximum point in the order of
@@ -173,8 +173,11 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
             # (1st-axis, 2nd-axis) == (y-axis, x-axis).
             keypoints[i] = keypoints[i]
 
+            # reduce data size
+            keypoints[i] = keypoints[i].astype(np.int32)
+
             check_dtype_and_shape(
-                dtype=np.int64,
+                dtype=np.int32,
                 shape=(None, 2)  # (<number of local maxima>, [y, x])
             )(keypoints[i])
 
@@ -191,21 +194,21 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
                 dtype=np.float32,
                 shape=(
                     None,
-                    self._p.key_image_size * 2 + 1,
-                    self._p.key_image_size * 2 + 1,
+                    self.p.key_image_size * 2 + 1,
+                    self.p.key_image_size * 2 + 1,
                     3
                 )
             )(keyframes[i])
 
         # *** set the whole result in this section
         check.f32_2hw3_clipped(original_images)
-        self._result.original_images_clipped = original_images
+        self.result.original_images_clipped = original_images
         check.f32_2hw_clipped(diff_images)
-        self._result.diff_images_clipped = diff_images
+        self.result.diff_images_clipped = diff_images
         # TODO: check for keypoints
-        self._result.keypoints = keypoints
+        self.result.keypoints = keypoints
         # TODO: check for keyframes
-        self._result.keyframes = keyframes
+        self.result.keyframes = keyframes
 
 
 class _PMComputerMatchExtractorMixin(_PMComputerStubs):
@@ -278,14 +281,14 @@ class _PMComputerMatchExtractorMixin(_PMComputerStubs):
 
         # check the distance is better than global parameter `mutual_match_max_cos_distance`
         distance = dist_mat[best_index_dim1to2, best_index_dim2to1]
-        mask = distance < self._p.mutual_match_max_cos_distance
+        mask = distance < self.p.mutual_match_max_cos_distance
         best_index_dim1to2 = best_index_dim1to2[mask]
         best_index_dim2to1 = best_index_dim2to1[mask]
 
         return np.stack([best_index_dim1to2, best_index_dim2to1])
 
     def extract_matches(self):
-        keyframes = self._result.keyframes
+        keyframes = self.result.keyframes
         assert keyframes is not None
 
         # extract feature vectors of key-frames for matching
@@ -301,8 +304,8 @@ class _PMComputerMatchExtractorMixin(_PMComputerStubs):
         # find mutual match
         match_index_pair = self._find_mutual_best_match(dist_mat)
 
-        self._result.match_index_pair = match_index_pair
-        self._result.distance_matrix = dist_mat
+        self.result.match_index_pair = match_index_pair
+        self.result.distance_matrix = dist_mat
 
 
 class _PMComputerMotionCentroidGenerator(_PMComputerStubs):
@@ -366,7 +369,7 @@ class _PMComputerMotionCentroidGenerator(_PMComputerStubs):
         old_centroid = np.array(keyframe_dst.shape)[:-1] // 2
         x, y = np.meshgrid(np.arange(tp.shape[0]), np.arange(tp.shape[1]))
         x, y = x - old_centroid[0], y - old_centroid[1]
-        rr = self._p.centroid_correction_template_match_filter_radius_ratio
+        rr = self.p.centroid_correction_template_match_filter_radius_ratio
         r = int(tp.shape[0] * rr) // 2
         tp[x * x + y * y > r * r] = 0
 
@@ -399,20 +402,20 @@ class _PMComputerMotionCentroidGenerator(_PMComputerStubs):
     def generate_motion_centroids(self):
         local_centroid = np.array([
             [
-                self._result.keypoints[i][match_index]
-                for match_index in self._result.match_index_pair[i]
+                self.result.keypoints[i][match_index]
+                for match_index in self.result.match_index_pair[i]
             ] for i in range(2)
         ])
 
         check_dtype_and_shape(
-            dtype=np.int64,
+            dtype=np.int32,
             shape=(2, None, 2)
-        )
+        )(local_centroid)
 
-        if self._p.enable_motion_correction:
+        if self.p.enable_motion_correction:
             corrections_for_each_match = []
-            for match_index_pair in self._result.match_index_pair.T:
-                keyframes = [self._result.keyframes[i][match_index_pair[i]] for i in range(2)]
+            for match_index_pair in self.result.match_index_pair.T:
+                keyframes = [self.result.keyframes[i][match_index_pair[i]] for i in range(2)]
                 correction = self._correct_motion_centroid(*keyframes)
                 corrections_for_each_match.append(correction)
             corrections_for_each_match = np.stack(corrections_for_each_match)
@@ -423,46 +426,76 @@ class _PMComputerMotionCentroidGenerator(_PMComputerStubs):
         local_centroid_normalized = np.zeros_like(local_centroid, dtype=np.float32)
 
         # normalize by rect
-        normalizer = self._input.rect_actual_scaled.normalize_points_inside_based_on_corner
+        normalizer = self.source.rect_actual_scaled.normalize_points_inside_based_on_corner
         for i in range(2):
             local_centroid_normalized[i] = normalizer(local_centroid[i][:, ::-1])[:, ::-1]
 
         # set result
         check_dtype_and_shape(
-            dtype=np.int64,
+            dtype=np.int32,
             shape=(2, None, 2)
         )(local_centroid)
-        self._result.local_centroid = local_centroid
+        self.result.local_centroid = local_centroid
 
-        global_centroid = local_centroid + self._input.rect_actual_scaled.p_min[::-1]
+        global_centroid = local_centroid + self.source.rect_actual_scaled.p_min[::-1]
         check_dtype_and_shape(
-            dtype=np.int64,
+            dtype=np.int32,
             shape=(2, None, 2)
         )(global_centroid)
-        self._result.global_centroid = global_centroid
+        self.result.global_centroid = global_centroid
 
         check_dtype_and_shape(
             dtype=np.float32,
             shape=(2, None, 2)
         )(local_centroid_normalized)
-        self._result.local_centroid_normalized = local_centroid_normalized
+        self.result.local_centroid_normalized = local_centroid_normalized
+
+
+class _PMComputerVelocityGenerator(_PMComputerStubs):
+    def extract_velocity(self):
+        # calculate difference of centroids
+        centroid_delta = np.subtract(
+            self.result.local_centroid[1],
+            self.result.local_centroid[0]
+        )
+
+        # calculate difference of centroids normalized by rect and timespan
+        velocity_normalized = np.subtract(
+            self.result.local_centroid_normalized[1],
+            self.result.local_centroid_normalized[0]
+        ) / self.source.frame_interval
+
+        # set results
+        check_dtype_and_shape(
+            dtype=np.int32,
+            shape=(None, 2)
+        )(centroid_delta)
+        self.result.centroid_delta = centroid_delta
+
+        check_dtype_and_shape(
+            dtype=np.float32,
+            shape=(None, 2)
+        )(velocity_normalized)
+        self.result.velocity_normalized = velocity_normalized
 
 
 class PMComputer(
     _PMComputerKeyFramerDetectorMixin,
     _PMComputerMatchExtractorMixin,
-    _PMComputerMotionCentroidGenerator
+    _PMComputerMotionCentroidGenerator,
+    _PMComputerVelocityGenerator
 ):
     def __init__(self, parameter: PMDetectorParameter, source: PMDetectorSource):
-        self._p = parameter
-        self._input = source
-        self._result = PMDetectorResult()
+        self.p = parameter
+        self.source = source
+        self.result = PMDetectorResult()
 
     def compute(self) -> PMDetectorResult:
         self.detect_keypoints()
-        if self._result.contains_keypoints:
+        if self.result.contains_keypoints:
             self.extract_matches()
             self.generate_motion_centroids()
+            self.extract_velocity()
         # noinspection PyProtectedMember
-        self._result._freeze_fields()
-        return self._result
+        self.result._freeze_fields()
+        return self.result

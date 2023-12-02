@@ -15,6 +15,8 @@ class PMDetectorResult:
     local_centroid: np.ndarray  # centroids in rect coordinate
     global_centroid: np.ndarray  # centroids in global coordinate
     local_centroid_normalized: np.ndarray  # array of float32
+    centroid_delta: np.ndarray
+    velocity_normalized: np.ndarray
 
     def __init__(self):
         self.__field_names = type(self).__annotations__.keys()
