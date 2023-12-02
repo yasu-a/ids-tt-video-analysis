@@ -1,6 +1,5 @@
 import functools
 from dataclasses import dataclass
-from pprint import pprint
 from typing import Optional
 
 import matplotlib.pyplot as plt
@@ -9,6 +8,7 @@ import scipy.ndimage
 import skimage.feature
 from sklearn.metrics.pairwise import cosine_similarity
 
+import app_logging
 import npstorage_context as snp_context
 import storage
 import storage.npstorage as snp
@@ -36,8 +36,8 @@ class PMDetectorParameter:
     # 実際に切り出されるキーフレームの大きさは`key_image_size * 2 + 1`
     key_image_size: int = 32
 
-    # これ以上の動きを持つモーションはエラーとして除外する
-    max_velocity: int = 20
+    # これ以上の動き（正規化済み）を持つモーションはエラーとして除外する
+    max_velocity_normalized: float = 1.0
 
     # Motion-centroid-correctionを行うかどうか
     enable_motion_correction: bool = True
@@ -180,6 +180,10 @@ class PMDetectorInput:
             (target_frame.frame_shape, next_frame.frame_shape)
         assert isinstance(detection_rect_normalized, RectNormalized), detection_rect_normalized
 
+    @property
+    def frame_interval(self) -> float:
+        return self.next_frame.timestamp - self.target_frame.timestamp
+
 
 class OneWriteManyReadDescriptor:
     def __init__(self, default):
@@ -209,6 +213,8 @@ class PMDetectorResult:
     match_index_pair: np.ndarray
     distance_matrix: np.ndarray
     local_centroid: np.ndarray  # centroids in rect coordinate
+    global_centroid: np.ndarray  # centroids in global coordinate
+    local_centroid_normalized: np.ndarray  # array of float32
 
     def __init__(self):
         self.__field_names = type(self).__annotations__.keys()
@@ -389,7 +395,7 @@ class PMComputer:
             keypoints[i] = skimage.feature.peak_local_max(
                 diff_images[i],
                 min_distance=max(diff_images[i].shape) // self._p.local_max_distance_factor
-            )
+            )  # [N_KEYPOINTS, (Y, X)]
 
             # peak_local_max() returns the local maximum point in the order of
             # (height, width), which match our expectation
@@ -639,7 +645,32 @@ class PMComputer:
             # correct local center of second frame
             local_centroid[1] += corrections_for_each_match
 
+        local_centroid_normalized = np.zeros_like(local_centroid, dtype=np.float32)
+
+        # normalize by rect
+        normalizer = self._input.rect_actual_scaled.normalize_points_inside_based_on_corner
+        for i in range(2):
+            local_centroid_normalized[i] = normalizer(local_centroid[i][:, ::-1])[:, ::-1]
+
+        # set result
+        _check_dtype_and_shape(
+            dtype=np.int64,
+            shape=(2, None, 2)
+        )(local_centroid)
         self._result.local_centroid = local_centroid
+
+        global_centroid = local_centroid + self._input.rect_actual_scaled.p_min[::-1]
+        _check_dtype_and_shape(
+            dtype=np.int64,
+            shape=(2, None, 2)
+        )(global_centroid)
+        self._result.global_centroid = global_centroid
+
+        _check_dtype_and_shape(
+            dtype=np.float32,
+            shape=(2, None, 2)
+        )(local_centroid_normalized)
+        self._result.local_centroid_normalized = local_centroid_normalized
 
     def compute(self) -> PMDetectorResult:
         self.detect_keypoints()
@@ -652,89 +683,148 @@ class PMComputer:
 
 
 class PMDetectorTester:
-    @staticmethod
-    def test_detect_keypoints(result: PMDetectorResult):
-        plt.figure(figsize=(16, 8))
+    def __init__(self, source: PMDetectorInput, result: PMDetectorResult):
+        self._source = source
+        self._result = result
+        self._logger = app_logging.create_logger(f'{__name__}#Tester')
+
+    def test_all(self):
+        self._logger.info('test_all')
+
+        for field_name in dir(self):
+            if not field_name.startswith('test_'):
+                continue
+            if field_name == 'test_all':
+                continue
+            getattr(self, field_name)()
+
+    def test_detect_keypoints(self):
+        self._logger.info('test_detect_keypoints')
+
+        plt.figure(figsize=(10, 5))
         for i in range(2):
             plt.subplot(120 + i + 1)
-            plt.imshow(result.original_images_clipped[i])
+            plt.imshow(self._result.original_images_clipped[i])
             plt.scatter(
-                *result.keypoints[i].T[::-1],
+                *self._result.keypoints[i].T[::-1],
                 c='yellow',
                 marker='x',
                 s=500,
                 linewidths=3
             )
+            plt.axis('off')
+        plt.suptitle('test_detect_keypoints')
+        plt.tight_layout()
         plt.show()
-        pprint(result.keypoints)
 
-    @staticmethod
-    def test_matches(result: PMDetectorResult):
-        matches_tuple = {tuple(x) for x in result.match_index_pair.T}
-        n_keys_a, n_keys_b = map(len, result.keyframes)
+    def test_matches(self):
+        self._logger.info('test_matches')
+
+        matches_tuple = {tuple(x) for x in self._result.match_index_pair.T}
+        n_keys_a, n_keys_b = map(len, self._result.keyframes)
         fig, axes = plt.subplots(n_keys_a + 2, n_keys_b + 2, figsize=(40, 40))
 
         from tqdm import tqdm
 
         for i in tqdm(range(n_keys_a)):
             for j in range(n_keys_b):
-                axes[i + 2, j + 2].bar([0], [result.distance_matrix[i, j]])
+                axes[i + 2, j + 2].bar([0], [self._result.distance_matrix[i, j]])
                 axes[i + 2, j + 2].set_ylim(0, 1)
                 if (i, j) in matches_tuple:
                     axes[i + 2, j + 2].scatter([0], [0.5], color='red', s=500)
 
         for i in range(n_keys_a):
-            axes[i + 2, 0].imshow(result.original_images_clipped[0])
+            axes[i + 2, 0].imshow(self._result.original_images_clipped[0])
             axes[i + 2, 0].scatter(
-                result.keypoints[0][i, 1],
-                result.keypoints[0][i, 0],
+                self._result.keypoints[0][i, 1],
+                self._result.keypoints[0][i, 0],
                 color='yellow',
                 marker='x',
                 s=200
             )
-            axes[i + 2, 1].imshow(result.keyframes[0][i])
+            axes[i + 2, 1].imshow(self._result.keyframes[0][i])
         for i in range(n_keys_b):
-            axes[0, i + 2].imshow(result.original_images_clipped[1])
+            axes[0, i + 2].imshow(self._result.original_images_clipped[1])
             axes[0, i + 2].scatter(
-                result.keypoints[1][i, 1],
-                result.keypoints[1][i, 0],
+                self._result.keypoints[1][i, 1],
+                self._result.keypoints[1][i, 0],
                 color='yellow',
                 marker='x',
                 s=200
             )
-            axes[1, i + 2].imshow(result.keyframes[1][i])
+            axes[1, i + 2].imshow(self._result.keyframes[1][i])
 
         for ax in axes.flatten():
             ax.axis('off')
+
+        plt.suptitle('test_matches')
         fig.tight_layout()
-        fig.savefig('local_max_feature_dist_mat.jpg')
         fig.show()
 
-    @staticmethod
-    def test_local_centroids(result: PMDetectorResult):
+    def test_local_centroids(self):
+        self._logger.info('test_local_centroids')
+
         plt.figure(figsize=(10, 5))
-        plt.subplot(1, 2, 1)
-        plt.imshow(result.original_images_clipped[0])
-        for i, mi in enumerate(result.match_index_pair[0]):
-            plt.scatter(
-                *result.local_centroid[0][i][::-1],
-                color='yellow',
-                marker='x',
-                s=200
-            )
-        plt.axis('off')
 
-        plt.subplot(1, 2, 2)
-        plt.imshow(result.original_images_clipped[1])
-        for i, mi in enumerate(result.match_index_pair[1]):
-            plt.scatter(
-                *result.local_centroid[1][i][::-1],
-                color='yellow',
-                marker='x',
-                s=200
-            )
-        plt.axis('off')
+        for i in range(2):
+            plt.subplot(1, 2, i + 1)
+            plt.imshow(self._result.original_images_clipped[i])
+            for j, mi in enumerate(self._result.match_index_pair[i]):
+                plt.scatter(
+                    *self._result.local_centroid[i][j][::-1],
+                    color='yellow',
+                    marker='x',
+                    s=200
+                )
+            plt.axis('off')
 
+        plt.suptitle('test_local_centroids')
+        plt.tight_layout()
+        plt.show()
+
+    def test_global_centroids(self):
+        self._logger.info('test_global_centroids')
+
+        plt.figure(figsize=(10, 5))
+
+        for i in range(2):
+            plt.subplot(1, 2, i + 1)
+            plt.imshow([self._source.target_frame.original_image,
+                        self._source.next_frame.original_image][i])
+            for j, mi in enumerate(self._result.match_index_pair[i]):
+                plt.scatter(
+                    *self._result.global_centroid[i][j][::-1],
+                    color='yellow',
+                    marker='x',
+                    s=200
+                )
+            plt.axis('off')
+
+        plt.suptitle('test_global_centroids')
+        plt.tight_layout()
+        plt.show()
+
+    def test_local_centroids_normalized(self):
+        self._logger.info('test_local_centroids_normalized')
+
+        plt.figure(figsize=(10, 5))
+
+        for i in range(2):
+            plt.subplot(1, 2, i + 1)
+            plt.imshow([self._source.target_frame.original_image,
+                        self._source.next_frame.original_image][i])
+            for j, mi in enumerate(self._result.match_index_pair[i]):
+                xy = self._result.local_centroid_normalized[i][j][::-1]
+                xy = xy * self._source.rect_actual_scaled.size + self._source.rect_actual_scaled.p_min
+                plt.scatter(
+                    *xy,
+                    color='yellow',
+                    marker='x',
+                    s=200
+                )
+            # plt.axis('off')
+
+        plt.suptitle('test_local_centroids_normalized')
         plt.tight_layout()
         plt.show()
 
@@ -769,25 +859,23 @@ if __name__ == '__main__':
             detector: Optional[PMDetector] = PMDetector(
                 PMDetectorParameter(enable_motion_correction=True)
             )
-            result = detector.compute(
-                PMDetectorInput(
-                    target_frame=PMDetectorInputTimeSeriesEntry(
-                        original_image=snp_entry_target.original,
-                        diff_image=snp_entry_target.motion,
-                        timestamp=float(snp_entry_target.timestamp)
-                    ),
-                    next_frame=PMDetectorInputTimeSeriesEntry(
-                        original_image=snp_entry_next.original,
-                        diff_image=snp_entry_next.motion,
-                        timestamp=float(snp_entry_next.timestamp)
-                    ),
-                    detection_rect_normalized=train_input.frame_rects.normalized(video_name)
-                )
+            source = PMDetectorInput(
+                target_frame=PMDetectorInputTimeSeriesEntry(
+                    original_image=snp_entry_target.original,
+                    diff_image=snp_entry_target.motion,
+                    timestamp=float(snp_entry_target.timestamp)
+                ),
+                next_frame=PMDetectorInputTimeSeriesEntry(
+                    original_image=snp_entry_next.original,
+                    diff_image=snp_entry_next.motion,
+                    timestamp=float(snp_entry_next.timestamp)
+                ),
+                detection_rect_normalized=train_input.frame_rects.normalized(video_name)
             )
+            result = detector.compute(source=source)
 
-            # PMDetectorTester.test_detect_keypoints(result)
-            # PMDetectorTester.test_matches(result)
-            PMDetectorTester.test_local_centroids(result)
+            tester = PMDetectorTester(source=source, result=result)
+            tester.test_all()
 
             # TODO: normalize result
 
