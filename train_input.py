@@ -144,11 +144,11 @@ class RectActualScaled(NamedTuple):
             (self.p_min.y, list(points_x), list(points_y), self.p_max.y)
 
         # normalize values
-        normalized_x = (points_x - self.p_min.x) / self.scale.x
-        normalized_y = (points_y - self.p_min.y) / self.scale.y
+        normalized_xy = points_xy.copy()
+        normalized_xy = (normalized_xy - self.p_min) / self.size
 
         # generate normalized array
-        result = np.concatenate([normalized_x[:, None], normalized_y[:, None]], axis=1)
+        result = normalized_xy
         assert points_xy.shape == result.shape, (points_xy.shape, result.shape)
 
         return result
