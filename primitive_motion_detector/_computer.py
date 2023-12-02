@@ -11,12 +11,13 @@ from ._source import PMDetectorSource
 from ._util import check_dtype_and_shape
 
 
-class PMComputer:
-    def __init__(self, parameter: PMDetectorParameter, source: PMDetectorSource):
-        self._p = parameter
-        self._input = source
-        self._result = PMDetectorResult()
+class _PMComputerStubs:
+    _p: PMDetectorParameter
+    _input: PMDetectorSource
+    _result: PMDetectorResult
 
+
+class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
     def __extract_key_frame_around(self, image, index_axis_1, index_axis_2):
         assert image.ndim == 3, image.shape
 
@@ -208,6 +209,8 @@ class PMComputer:
         # TODO: check for keyframes
         self._result.keyframes = keyframes
 
+
+class _PMComputerMatchExtractorMixin(_PMComputerStubs):
     @classmethod
     def _split_single_channel_image_3x3(cls, image) -> list[np.ndarray]:
         assert image.ndim == 2, image.shape
@@ -303,6 +306,8 @@ class PMComputer:
         self._result.match_index_pair = match_index_pair
         self._result.distance_matrix = dist_mat
 
+
+class _PMComputerMotionCentroidGenerator(_PMComputerStubs):
     _FILTER_GRAD_FIRST_AXIS = np.array([
         [0, 0, 0],
         [+0.5, 0, -0.5],
@@ -367,7 +372,7 @@ class PMComputer:
         r = int(tp.shape[0] * rr) // 2
         tp[x * x + y * y > r * r] = 0
 
-        # extract best template match
+        # extract the best template match
         mask_max = tp == tp.max()
         if np.count_nonzero(mask_max) == 1:
             xs, ys = np.where(mask_max)
@@ -443,6 +448,17 @@ class PMComputer:
             shape=(2, None, 2)
         )(local_centroid_normalized)
         self._result.local_centroid_normalized = local_centroid_normalized
+
+
+class PMComputer(
+    _PMComputerKeyFramerDetectorMixin,
+    _PMComputerMatchExtractorMixin,
+    _PMComputerMotionCentroidGenerator
+):
+    def __init__(self, parameter: PMDetectorParameter, source: PMDetectorSource):
+        self._p = parameter
+        self._input = source
+        self._result = PMDetectorResult()
 
     def compute(self) -> PMDetectorResult:
         self.detect_keypoints()
