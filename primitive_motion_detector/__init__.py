@@ -1,6 +1,4 @@
-from primitive_motion_detector._parameter import PMDetectorParameter
-from primitive_motion_detector._util import check_dtype_and_shape
 from ._computer import PMComputer
+from ._parameter import PMDetectorParameter
 from ._result import PMDetectorResult
 from ._source import PMDetectorSourceTimeSeriesEntry, PMDetectorSource
-from ._util import check_dtype_and_shape, OneWriteManyReadDescriptor
