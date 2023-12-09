@@ -12,6 +12,8 @@ logger = app_logging.create_logger(__name__)
 
 
 def _worker(q: mp.Queue, params: dict):
+    # FIXME: stopping me sometimes requires process kill
+
     # noinspection PyTypeChecker
     out = iio.get_writer(
         params['path'],
