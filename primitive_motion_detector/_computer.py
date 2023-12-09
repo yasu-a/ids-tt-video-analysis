@@ -135,7 +135,7 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
         diff_images = diff_images.mean(axis=-1)
         check.f32_2hw_clipped(diff_images)
 
-        # remove luminance except significant ones for each frame time
+        # remove luminance except significant ones
         for i in range(2):
             diff_images[i] = np.where(
                 diff_images[i] < np.percentile(diff_images[i], 95),
