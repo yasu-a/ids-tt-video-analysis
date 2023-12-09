@@ -1,4 +1,4 @@
-DO_TYPE_CHECK = False
+DO_TYPE_CHECK = True  # TODO: turn off!
 
 
 def check_dtype_and_shape(dtype, shape):

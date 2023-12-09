@@ -138,7 +138,7 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
         # remove luminance except significant ones
         for i in range(2):
             diff_images[i] = np.where(
-                diff_images[i] < np.percentile(diff_images[i], 95),
+                diff_images[i] < self.p.diff_minimum_luminance,
                 0,
                 diff_images[i]
             )
@@ -181,24 +181,29 @@ class _PMComputerKeyFramerDetectorMixin(_PMComputerStubs):
                 shape=(None, 2)  # (<number of local maxima>, [y, x])
             )(keypoints[i])
 
-        # *** extract key frames
-        # extract key frames for each frame time
-        keyframes = [None, None]
-        for i in range(2):
-            keyframes[i] = self.__extract_key_frame_around(
-                image=original_images[i],
-                index_axis_1=keypoints[i][:, 0],
-                index_axis_2=keypoints[i][:, 1]
-            )
-            check_dtype_and_shape(
-                dtype=np.float32,
-                shape=(
-                    None,
-                    self.p.key_image_size * 2 + 1,
-                    self.p.key_image_size * 2 + 1,
-                    3
+        # if `keypoints[i]` are empty like `array([], shape=(0, 2), dtype=int32)`
+        if len(keypoints[0]) == 0 or len(keypoints[1]) == 0:
+            keyframes = None
+        else:
+            # *** extract key frames
+            # extract key frames for each frame time
+            keyframes = [None, None]
+            for i in range(2):
+                keyframes[i] = self.__extract_key_frame_around(
+                    image=original_images[i],
+                    index_axis_1=keypoints[i][:, 0],
+                    index_axis_2=keypoints[i][:, 1]
                 )
-            )(keyframes[i])
+
+                check_dtype_and_shape(
+                    dtype=np.float32,
+                    shape=(
+                        None,
+                        self.p.key_image_size * 2 + 1,
+                        self.p.key_image_size * 2 + 1,
+                        3
+                    )
+                )(keyframes[i])
 
         # *** set the whole result in this section
         check.f32_2hw3_clipped(original_images)
@@ -412,6 +417,7 @@ class _PMComputerMotionCentroidGenerator(_PMComputerStubs):
             shape=(2, None, 2)
         )(local_centroid)
 
+        # motion correction
         if self.p.enable_motion_correction:
             corrections_for_each_match = []
             for match_index_pair in self.result.match_index_pair.T:
@@ -490,12 +496,43 @@ class PMComputer(
         self.source = source
         self.result = PMDetectorResult()
 
+    def fix_match_by_distance(self):
+        if not self.result.valid:
+            return
+
+        velocity_norm_normalized = np.linalg.norm(self.result.velocity_normalized, axis=1)
+        mask = velocity_norm_normalized <= self.p.max_velocity_normalized
+
+        r = self.result
+        self.result = PMDetectorResult.frozen(
+            original_images_clipped=r.original_images_clipped,
+            diff_images_clipped=r.diff_images_clipped,
+            keypoints=r.keypoints,
+            keyframes=r.keyframes,
+            match_index_pair=r.match_index_pair[:, mask],
+            distance_matrix=r.distance_matrix,
+            local_centroid=r.local_centroid[:, mask, :],
+            global_centroid=r.local_centroid[:, mask, :],
+            local_centroid_normalized=r.local_centroid_normalized[:, mask, :],
+            centroid_delta=r.centroid_delta[mask, :],
+            velocity_normalized=r.velocity_normalized[mask, :],
+            valid=not np.all(~mask)
+        )
+
+    def post_process(self):
+        self.fix_match_by_distance()
+
     def compute(self) -> PMDetectorResult:
+        valid = False
         self.detect_keypoints()
         if self.result.contains_keypoints:
             self.extract_matches()
-            self.generate_motion_centroids()
-            self.extract_velocity()
+            if self.result.contains_matches:
+                self.generate_motion_centroids()
+                self.extract_velocity()
+                valid = True
+        self.result.valid = valid
         # noinspection PyProtectedMember
         self.result._freeze_fields()
+        self.post_process()
         return self.result

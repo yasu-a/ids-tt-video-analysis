@@ -3,6 +3,9 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class PMDetectorParameter:
+    # 極大点の算出で考慮する差分画像の最小輝度（差分画像にかけるマスクの条件）
+    diff_minimum_luminance: float = 0.1
+
     # 与えられた画像にかける平均値フィルタの大きさ`画像サイズ // mean_filter_size_factor`
     mean_filter_size_factor: int = 32
 
@@ -22,7 +25,7 @@ class PMDetectorParameter:
     key_image_size: int = 32
 
     # これ以上の動き（正規化済み）を持つモーションはエラーとして除外する
-    max_velocity_normalized: float = 1.0
+    max_velocity_normalized: float = 1.5
 
     # Motion-centroid-correctionを行うかどうか
     enable_motion_correction: bool = True

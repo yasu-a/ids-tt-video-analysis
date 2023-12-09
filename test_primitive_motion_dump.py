@@ -107,7 +107,7 @@ def create_source(rect: train_input.RectNormalized, snp_video_frame: snp.NumpySt
 
 def mp_main():
     video_name = '20230205_04_Narumoto_Harimoto'
-    start, stop = 200, 400
+    start, stop = 200, 250
 
     with storage.create_instance(
             domain='numpy_storage',
@@ -128,7 +128,7 @@ def mp_main():
                 fps=fps
         ) as vw:
             n_workers = max(1, mp.cpu_count() - 1)
-            logger.info('{n_workers=}')
+            logger.info(f'{n_workers=}')
             pool = ProcessPoolExecutor(max_workers=n_workers)
 
             futures = collections.deque()
@@ -161,9 +161,12 @@ def mp_main():
 
                     if futures:
                         if futures[0].done():
-                            result = futures.popleft().result()
+                            result: PMDetectorResult = futures.popleft().result()
 
-                            xs = result.local_centroid
+                            if result.valid:
+                                xs = result.local_centroid
+                            else:
+                                xs = [[], []]
 
                             img = skimage.util.img_as_ubyte(
                                 result.original_images_clipped[0].copy())
@@ -195,7 +198,9 @@ def mp_main():
                             completed_index += 1
                             bar.update(1)
 
-                    bar.set_description(f'{len(indexes)=}, {len(futures)=}')
+                    bar.set_description(f'{len(indexes)=}, '
+                                        f'{len(futures)=}, '
+                                        f'{futures[0].done() if futures else None=}')
 
 
 if __name__ == '__main__':
