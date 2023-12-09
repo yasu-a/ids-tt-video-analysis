@@ -19,7 +19,7 @@ class PMDetectorResult:
     velocity_normalized: np.ndarray
 
     def __init__(self):
-        self.__field_names = type(self).__annotations__.keys()
+        self.__field_names = tuple(type(self).__annotations__.keys())  # convert picklable
         self.__descriptors = []
         for field_name in self.__field_names:
             field_accessor = OneWriteManyReadDescriptor(default=None)
