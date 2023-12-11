@@ -9,6 +9,8 @@ import npstorage_context
 import storage
 import storage.npstorage as snp
 
+np.set_printoptions(threshold=65536)
+
 npstorage_context.just_run_registration()
 
 app_logging.set_log_level(app_logging.WARN)
@@ -122,18 +124,16 @@ class OperationContext(OperationBase):
             assert isinstance(st, snp.NumpyStorage)
             index = np.arange(st.count())[args.index]
             for i in index:
-                print(f'[Index] {i}')
                 entry = st.get_entry(i)
                 # noinspection PyProtectedMember
                 for name, value in entry._asdict().items():
                     if args.key and name not in args.key:
                         continue
                     if value is None:
-                        print(f' [Array] {name!r}')
-                        print('NULL')
+                        print(f'[{i:6d}] {name!r:60s} NULL')
                     else:
                         print(
-                            ' [Array] {:50s} '.format(
+                            f'[{i:6d}]' + ' {:60s} '.format(
                                 f'{name!r:15s} {value.shape!r:>15s} {value.size!s:>9s}  {value.dtype!s:<10s}'
                             ),
                             end=''
