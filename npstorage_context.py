@@ -63,5 +63,34 @@ snp.register_storage_context(
 )
 
 
+class SNPEntryLKMotion(NamedTuple):
+    start: np.ndarray
+    velocity: np.ndarray  # normalized by rect and timestamps
+    timestamp: float
+    fi: int
+
+
+snp.register_storage_context(
+    snp.StorageContext(
+        name='lk_motion',
+        struct_definition={
+            'start': {
+                'dtype': np.float32
+            },
+            'velocity': {
+                'dtype': np.float32
+            },
+            'timestamp': {
+                'dtype': np.float32
+            },
+            'fi': {
+                'dtype': np.int32
+            }
+        },
+        entry_named_tuple=SNPEntryLKMotion
+    )
+)
+
+
 def just_run_registration():
     pass
