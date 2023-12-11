@@ -17,14 +17,14 @@ def register_process_in_module(module):
         process_stage_type = value
 
         # filter by `ENABLED` flag
-        if process_stage_type.ENABLED:
+        if not process_stage_type.ENABLED:
             continue
 
         # register class to `_process_stage_registration`
         global _process_stage_registration
 
         # register class by canonical name
-        _process_stage_registration[process_stage_type.NAME] = process_stage_type
+        # _process_stage_registration[process_stage_type.NAME] = process_stage_type
 
         # register class by its alias
         for alias in process_stage_type.ALIASES or []:
