@@ -6,6 +6,7 @@
       <excludeFolder url="file://$MODULE_DIR$/legacy" />
       <excludeFolder url="file://$MODULE_DIR$/notes" />
       <excludeFolder url="file://$MODULE_DIR$/model" />
+      <excludeFolder url="file://$MODULE_DIR$/legacy_tests" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.10" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
