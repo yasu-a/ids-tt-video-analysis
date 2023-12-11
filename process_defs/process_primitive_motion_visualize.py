@@ -18,6 +18,7 @@ logger = app_logging.create_logger(__name__)
 class ProcessStagePrimitiveMotionVisualize(process.ProcessStage):
     NAME = 'primitive-motion-visualize'
     ALIASES = 'pmv',
+    ENABLED = False
 
     @classmethod
     def customize_parser(cls, parser: argparse.ArgumentParser) -> None:

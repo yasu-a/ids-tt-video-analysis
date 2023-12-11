@@ -30,6 +30,7 @@ def _pad_motion_matrix(mat, max_n):
 class ProcessStagePrimitiveMotionDump(process.ProcessStage):
     NAME = 'primitive-motion-dump'
     ALIASES = 'pmd',
+    ENABLED = False
 
     @classmethod
     def customize_parser(cls, parser: argparse.ArgumentParser) -> None:

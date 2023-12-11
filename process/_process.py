@@ -7,13 +7,26 @@ _process_stage_registration = {}
 
 def register_process_in_module(module):
     for key, value in vars(module).items():
+        # filter value
         if not isinstance(value, type):
             continue
         if not issubclass(value, ProcessStage):
             continue
+
+        # class `ProcessStage` found
         process_stage_type = value
+
+        # filter by `ENABLED` flag
+        if process_stage_type.ENABLED:
+            continue
+
+        # register class to `_process_stage_registration`
         global _process_stage_registration
+
+        # register class by canonical name
         _process_stage_registration[process_stage_type.NAME] = process_stage_type
+
+        # register class by its alias
         for alias in process_stage_type.ALIASES or []:
             _process_stage_registration[alias] = process_stage_type
 
