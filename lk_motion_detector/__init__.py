@@ -14,44 +14,23 @@ import train_input
 from config import config
 from train_input import RectNormalized, RectActualScaled
 
-logger = app_logging.create_logger('__name__')
+logger = app_logging.create_logger(__name__)
 
 
 @dataclass(frozen=True)
-class LKVideoExtractorParameter:
+class LKMotionDetectorParameter:
     rect: RectNormalized
     lk_params: dict[str, Any]
     feature_params: dict[str, Any]
-    original_resize_scale: float
+    original_resizing_scale: float
     max_track_length_seconds: float
-    min_producible_track_length: float
+    min_producible_track_length_seconds: float
     min_valid_track_length_seconds: float
     detect_interval_frames: int
     # ↓ normalized by rect and timestamp [unit width(height)/second]
     min_velocity_full_normalized: float
     imshow: bool = False
     video_dump_path: str = None
-
-
-def _default_param(video_name):
-    return LKVideoExtractorParameter(
-        rect=train_input.frame_rects.normalized(video_name),
-        lk_params=dict(winSize=(15, 15),
-                       maxLevel=2,
-                       criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03)),
-        feature_params=dict(maxCorners=256,
-                            qualityLevel=0.1,
-                            minDistance=5,
-                            blockSize=5),
-        original_resize_scale=0.4,
-        max_track_length_seconds=0.3,
-        min_producible_track_length=0.1,
-        min_valid_track_length_seconds=0.05,
-        detect_interval_frames=1,
-        min_velocity_full_normalized=0.05,
-        imshow=False,
-        video_dump_path='./out.mp4'
-    )
 
 
 @dataclass(frozen=True)
@@ -102,6 +81,8 @@ class FrameProducer:
         def __init__(self, fp: 'FrameProducer'):
             self.__fp = fp
             logger.info(f'{self.__fp._video_path=}')
+            if not os.path.exists(self.__fp._video_path):
+                raise ValueError('invalid path', self.__fp._video_path)
             self.__cap = cv2.VideoCapture(self.__fp._video_path)
 
         def meta(self):
@@ -145,7 +126,7 @@ class FrameProducer:
 
 
 class Track:
-    def __init__(self, p: LKVideoExtractorParameter):
+    def __init__(self, p: LKMotionDetectorParameter):
         self.__p = p
         self.__xy: list[tuple[int, int]] = []
         self.__timestamps: list[float] = []
@@ -161,8 +142,20 @@ class Track:
             del self.__timestamps[0]
             del self.__xy[0]
 
-    def keypoint(self) -> tuple[int, int]:
-        return self.__xy[-1]
+    def keypoint(
+            self,
+            *,
+            invariance: Literal['rect'] = None,
+            rect: RectActualScaled = None,
+    ) -> tuple[int, int]:
+        x, y = self.__xy[-1]
+
+        if invariance == 'rect':
+            assert rect is not None
+            x /= rect.size.x
+            y /= rect.size.y
+
+        return x, y
 
     @property
     def valid(self):
@@ -170,7 +163,7 @@ class Track:
 
     @property
     def producible(self):
-        return self.timedelta >= self.__p.min_producible_track_length
+        return self.timedelta >= self.__p.min_producible_track_length_seconds
 
     def velocity(
             self,
@@ -214,7 +207,7 @@ class Track:
 
 
 class Tracks:
-    def __init__(self, p: LKVideoExtractorParameter):
+    def __init__(self, p: LKMotionDetectorParameter):
         self.__p = p
         self.__tracks: list[Track] = []
 
@@ -243,12 +236,18 @@ class Tracks:
             else:
                 del self.__tracks[i]
 
-    def keypoint(self, *, i32=False) -> np.ndarray:  # like list[tuple[float, float]]
+    def keypoint(
+            self,
+            *,
+            invariance: Literal['rect'] = None,
+            rect: RectActualScaled = None,
+            i32=False
+    ) -> np.ndarray:  # like list[tuple[float, float]]
         assert self  # tracks exist
 
         def it():
             for track in self.__tracks:
-                yield track.keypoint()
+                yield track.keypoint(invariance=invariance, rect=rect)
 
         arr = np.int32 if i32 else np.float32
         return arr(list(it()))
@@ -295,13 +294,13 @@ LKResultIteratorType = Iterable[LKDetectorResultType]
 # [SEE](http://labs.eecs.tottori-u.ac.jp/sd/Member/oyamada/OpenCV/html/py_tutorials/py_video
 # /py_lucas_kanade/py_lucas_kanade.html)
 class LKMotionComputer:
-    def __init__(self, p: LKVideoExtractorParameter, fp: FrameProducer):
+    def __init__(self, p: LKMotionDetectorParameter, fp: FrameProducer):
         self.__p = p
         self.__fp = fp
         self.__tracks: Tracks = Tracks(p)
 
     @functools.cached_property
-    def __actual_scaled_rect(self):
+    def actual_scaled_rect(self):
         meta = self.__fp.meta
         return self.__p.rect.to_actual_scaled(
             width=meta.frame_width,
@@ -315,7 +314,7 @@ class LKMotionComputer:
             full_normalized_velocity = self.__tracks.velocity_norm(
                 reliability='valid',
                 invariance='fps',
-                rect=self.__actual_scaled_rect
+                rect=self.actual_scaled_rect
             )
             np.nan_to_num(
                 full_normalized_velocity,
@@ -375,14 +374,15 @@ class LKMotionComputer:
                 self.__tracks.add_new_keypoints(p, fr.timestamp)
 
     def _process_frame_image(self, fr: Frame) -> LKDetectorFrame:
+        # FIXME: original_resizing_scale affects original_resized only, which has no effect for lk
         original_resized = cv2.resize(
             fr.original,
             None,
-            fx=self.__p.original_resize_scale,
-            fy=self.__p.original_resize_scale
+            fx=self.__p.original_resizing_scale,
+            fy=self.__p.original_resizing_scale
         )
 
-        target = fr.original[self.__actual_scaled_rect.index3d]
+        target = fr.original[self.actual_scaled_rect.index3d]
         fr = LKDetectorFrame(
             original=original_resized,
             frame_index=fr.frame_index,
@@ -397,7 +397,7 @@ class LKMotionComputer:
         logger.info(pformat(self.__p))
 
         fr_prev = None
-
+        total_tracks = 0
         with iter(self.__fp) as frame_iter:
             bar = tqdm(frame_iter)
             for _fr in bar:
@@ -405,9 +405,12 @@ class LKMotionComputer:
 
                 self._process_lk(fr_prev, fr)
                 fr_prev = fr
+                total_tracks += len(self.__tracks)
 
                 bar.set_description(
-                    f'{datetime.timedelta(seconds=fr.timestamp)} {len(self.__tracks)}'
+                    f'{datetime.timedelta(seconds=fr.timestamp)} '
+                    f'{len(self.__tracks)=:4d} '
+                    f'{total_tracks=:9d}'
                 )
 
                 yield fr, self.__tracks
@@ -488,36 +491,61 @@ class LKMotionComputer:
 
     def iter_results(self) -> LKResultIteratorType:
         it = self._iter_results()
+        logger.info(f'Generated basic iterator: {it}')
 
         if self.__p.imshow:
             it = self._iter_wrapper_imshow(it)
+            logger.info(f'Generated imshow wrapped iterator: {it}')
 
         if self.__p.video_dump_path:
             it = self._iter_wrapper_video_dump(it)
+            logger.info(f'Generated vd wrapped iterator: {it}')
+            logger.info(f'vd-path: {self.__p.video_dump_path}')
 
         return it
 
 
 class LKMotionDetector:
-    def __init__(self, parameter: LKVideoExtractorParameter):
+    def __init__(self, parameter: LKMotionDetectorParameter):
         self.__p = parameter
 
     def computer(self, frame_producer: FrameProducer):
         return LKMotionComputer(self.__p, frame_producer)
 
 
-def main():
-    video_name = config.default_video_name
-    detector = LKMotionDetector(
-        parameter=_default_param(video_name)
-    )
-    it = detector.computer(
-        frame_producer=FrameProducer.from_video_name(video_name),
-    ).iter_results()
-    for item in it:
-        _ = item
-    cv2.destroyAllWindows()
-
-
 if __name__ == '__main__':
+    def _default_param(video_name):
+        return LKMotionDetectorParameter(
+            rect=train_input.frame_rects.normalized(video_name),
+            lk_params=dict(winSize=(15, 15),
+                           maxLevel=2,
+                           criteria=(cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03)),
+            feature_params=dict(maxCorners=256,
+                                qualityLevel=0.1,
+                                minDistance=5,
+                                blockSize=5),
+            original_resizing_scale=0.4,
+            max_track_length_seconds=0.3,
+            min_producible_track_length_seconds=0.1,
+            min_valid_track_length_seconds=0.05,
+            detect_interval_frames=1,
+            min_velocity_full_normalized=0.05,
+            imshow=False,
+            video_dump_path='./out.mp4'
+        )
+
+
+    def main():
+        video_name = config.default_video_name
+        detector = LKMotionDetector(
+            parameter=_default_param(video_name)
+        )
+        it = detector.computer(
+            frame_producer=FrameProducer.from_video_name(video_name),
+        ).iter_results()
+        for item in it:
+            _ = item
+        cv2.destroyAllWindows()
+
+
     main()
