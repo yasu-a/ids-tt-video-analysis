@@ -132,8 +132,15 @@ class OperationContext(OperationBase):
                         print(f' [Array] {name!r}')
                         print('NULL')
                     else:
-                        print(f' [Array] {name!r} {value.shape} / {value.scale} / {value.dtype}')
+                        print(
+                            ' [Array] {:50s} '.format(
+                                f'{name!r:15s} {value.shape!r:>15s} {value.size!s:>9s}  {value.dtype!s:<10s}'
+                            ),
+                            end=''
+                        )
                         if args.full:
+                            if hasattr(value, 'ndim') and value.ndim >= 2:
+                                print('\n')
                             print(value)
                         elif args.imshow:
                             import cv2
@@ -141,10 +148,10 @@ class OperationContext(OperationBase):
                             cv2.imshow('cv2.imshow', cv2.cvtColor(value, cv2.COLOR_BGR2RGB))
                             cv2.waitKey()
                         else:
-                            if value.scale < 32:
+                            if value.size < 32:
                                 print(value)
                             else:
-                                print('(--full to show full data)')
+                                print('(--full to show data)')
 
 
 @register_operation_parser(op='check', aliases=['null', 'check-null', 'none', 'info'])
