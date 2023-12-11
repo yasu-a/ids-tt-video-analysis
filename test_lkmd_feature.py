@@ -33,7 +33,7 @@ if __name__ == '__main__':
     with vw as vw, snp_lk_motion as snp_lk_motion, snp_frames as snp_frames:
         assert isinstance(snp_lk_motion, snp.NumpyStorage)
         assert isinstance(snp_frames, snp.NumpyStorage)
-        N = 16
+        N = 8
 
 
         @functools.cache
@@ -63,7 +63,7 @@ if __name__ == '__main__':
                     l = length[idx_flatten == xi * N + yi]
                     if a.size:
                         vel_ag_mean[xi, yi] = a.mean()
-                        vel_ln_mean[xi, yi] = l.mean()
+                        vel_ln_mean[xi, yi] = l[l >= np.percentile(l, 0.5)].mean()
                     else:
                         vel_ag_mean[xi, yi] = np.nan
 
