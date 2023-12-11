@@ -48,13 +48,9 @@
 python main.py <subcommand> <args> ...
 ```
 
-### ProcessStageVideoDump [process_video_dump.py](process_defs/process_video_dump.py)
+### [ProcessStageVideoDump](process_defs/process_video_dump.py)
 
 動画のフレームのオリジナル画像・差分画像をダンプする。
-
-```shell
-python main.py video-dump
-```
 
 ```shell
 python main.py vd
@@ -67,13 +63,9 @@ python main.py vd
   - `-s`/`--step`：このステップ数で飛ばし飛ばしフレームを書き出す（>=3？）
   - `-d`/`--diff-luminance-scale`/`--scale`：差分画像を何倍するか
 
-### ProcessStageExtractRectCLI [process_extract_rect_cli.py](process_defs/process_extract_rect_cli.py)
+### [ProcessStageExtractRectCLI](process_defs/process_extract_rect_cli.py)
 
 動画のモーション抽出を行う矩形領域を設定するための対話プログラムを起動する。
-
-```shell
-python main.py extract-rect-cli
-```
 
 ```shell
 python main.py cli-rect
@@ -84,13 +76,9 @@ python main.py cli-rect
 - キーワード引数
     - （なし）
 
-### ProcessStageLabeledFrameDump [process_labeled_frame_dump.py](process_defs/process_labeled_frame_dump.py) <font color="red">現在開発中</font>
+### [ProcessStageLabeledFrameDump](process_defs/process_labeled_frame_dump.py) <font color="red">開発中</font>
 
 インポートしたラベルデータから【フレームデータ vs. ラベル】のデータセットを生成する。
-
-```shell
-python main.py labeled-frame-dump
-```
 
 ```shell
 python main.py lfd
@@ -101,13 +89,9 @@ python main.py lfd
 - キーワード引数
     - （不明）
 
-### ProcessStageMarkerImport [process_marker_import.py](process_defs/process_marker_import.py)
+### [ProcessStageMarkerImport](process_defs/process_marker_import.py)
 
 [GitHub:ids-tt-video-marker](https://github.com/yasu-a/ids-tt-video-marker)による動画のラベルデータをインポートする。
-
-```shell
-python main.py marker-import
-```
 
 ```shell
 python main.py mi
@@ -118,17 +102,13 @@ python main.py mi
 - キーワード引数
     - （なし）
 
-### ProcessStagePrimitiveMotionDump [process_primitive_motion_dump.py](process_defs/process_primitive_motion_dump.py)
+### [ProcessStagePrimitiveMotionDump](process_defs/process_primitive_motion_dump.py) <font color="red">廃止</font>
 
 次のデータから[util_extrema_feature_motion_detector.py](./util_extrema_feature_motion_detector.py)
 によるモーションデータを生成する。
 
 - `video-dump`のフレームダンプ
 - `extract-rect-cli`の矩形データ
-
-```shell
-python main.py primitive-motion-dump
-```
 
 ```shell
 python main.py pmd
@@ -139,16 +119,12 @@ python main.py pmd
 - キーワード引数
   - （なし）
 
-### ProcessStagePrimitiveMotionVisualize [process_primitive_motion_visualize.py](process_defs/process_primitive_motion_visualize.py)
+### [ProcessStagePrimitiveMotionVisualize](process_defs/process_primitive_motion_visualize.py) <font color="red">廃止</font>
 
 次のデータからモーションベクトルを動画に重ねて可視化する。
 
 - `video-dump`のフレームダンプ
 - `primitive-motion-dump`のモーションダンプ
-
-```shell
-python main.py primitive-motion-visualize
-```
 
 ```shell
 python main.py pmv
