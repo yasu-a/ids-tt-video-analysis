@@ -37,12 +37,14 @@ class GrandTruthGenerator:
     @functools.cache
     def video_frame_count(cls, video_name):
         # TODO: replace with util
-        frame_count = cv2.VideoCapture(
-            os.path.join(
-                config.video_location,
-                video_name + '.mp4'
-            )
-        ).get(cv2.CAP_PROP_FRAME_COUNT)
+        path = os.path.join(
+            config.video_location,
+            video_name + '.mp4'
+        )
+        cap = cv2.VideoCapture(path)
+        if not cap.isOpened():
+            raise ValueError('cap not opened', path)
+        frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         frame_count = int(frame_count)
         return frame_count
 
