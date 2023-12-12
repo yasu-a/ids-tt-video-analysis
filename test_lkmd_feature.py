@@ -10,6 +10,8 @@ import storage
 import storage.npstorage as snp
 import train_input
 
+storage.context.forbid_writing = True
+
 if __name__ == '__main__':
     video_name = '20230205_04_Narumoto_Harimoto'
 
