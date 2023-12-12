@@ -1,7 +1,7 @@
 if __name__ == '__main__':
     import main
 
-    run_name = 'primitive-motion-visualization-debug'
+    run_name = 'mu2-debug'
 
     if run_name == 'marker-full-restore':
         import shutil
@@ -18,7 +18,8 @@ if __name__ == '__main__':
 
     elif run_name == 'primitive-motion-visualization-debug':
         argv = ['vpm', '20230219_03_Narumoto_Ito', '--start', '300', '--stop', '600']
-
+    elif run_name == 'mu2-debug':
+        argv = ['mu2']
     else:
         assert False, run_name
 
