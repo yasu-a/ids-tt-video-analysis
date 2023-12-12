@@ -124,7 +124,7 @@ def mp_main():
         fps = 1 / tsd[tsd.mean() - tsd.std() <= tsd].mean()
 
         with async_writer.AsyncVideoFrameWriter(
-                path='out.mp4',
+                path='../out.mp4',
                 fps=fps
         ) as vw:
             n_workers = max(1, mp.cpu_count() - 1)
@@ -229,7 +229,7 @@ if __name__ == '__main__':
             fps = 1 / tsd[tsd.mean() - tsd.std() <= tsd].mean()
 
             with async_writer.AsyncVideoFrameWriter(
-                    path='out.mp4',
+                    path='../out.mp4',
                     fps=fps
             ) as vw:
                 for i in tqdm(range(start, stop)):
