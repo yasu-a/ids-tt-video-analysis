@@ -2,8 +2,6 @@ import copy
 import os.path
 from typing import Callable, Union, Any
 
-import machine
-
 DEFAULT_RAISE_ERROR = object()
 
 
@@ -36,9 +34,9 @@ JSON_STRUCTURE = {
         'meta': {
             'json-version': 2,
             'author': {
-                'system': machine.system,
-                'node': machine.node,
-                'hash-digest': machine.platform_hash_digest
+                'system': None,
+                'node': None,
+                'hash-digest': None
             },
             'video-name': JsonPlaceholder('video_name', default=DEFAULT_RAISE_ERROR),
             'converted': JsonPlaceholder('converted', default=False)
