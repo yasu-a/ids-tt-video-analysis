@@ -10,7 +10,7 @@ from frozendict import frozendict
 import app_logging
 import process
 
-logger = app_logging.create_logger('__name__')
+logger = app_logging.create_logger(__name__)
 
 
 class CommandError(RuntimeError):
