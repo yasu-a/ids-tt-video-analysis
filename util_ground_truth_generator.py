@@ -43,7 +43,7 @@ class GrandTruthGenerator:
         )
         cap = cv2.VideoCapture(path)
         if not cap.isOpened():
-            raise ValueError('cap not opened', path)
+            raise FileNotFoundError('cap not opened', path)
         frame_count = cap.get(cv2.CAP_PROP_FRAME_COUNT)
         frame_count = int(frame_count)
         return frame_count
@@ -59,7 +59,7 @@ class GrandTruthGenerator:
         logger.info(f'Creating grand truth dataframe for {video_name!r}')
 
         label_sample_set = self.__fac[video_name]
-        logger.info(f'label_sample_set={pformat(list(label_sample_set))}')
+        logger.debug(f'label_sample_set={pformat(list(label_sample_set))}')
 
         agg: FrameAggregationResult = label_sample_set.aggregate_full()
 
@@ -97,7 +97,7 @@ class GrandTruthGenerator:
 
         mat = np.array(lst)  # 2d mat like list of [start, *labels, end]
 
-        logger.info(mat)
+        logger.debug(mat)
 
         assert np.all(np.diff(mat.flatten()) >= 0), 'values are not ordered'
 
@@ -122,6 +122,7 @@ class GrandTruthGenerator:
     def dump_grand_truth_dataframe(self, video_name):
         df = self.create_grand_truth_dataframe(video_name)
         path = os.path.join('label_data/grand_truth', video_name + '.csv')
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         df.to_csv(path)
 
 
