@@ -113,9 +113,9 @@ class GrandTruthGenerator:
         rows = []
         for i in range(self.video_frame_count(video_name)):
             label = (find_label(i) or 'invalid').lower()
-            rows.append({label: True})
+            rows.append({label: 1})
 
-        df = pd.DataFrame(rows).fillna(False).astype(bool)
+        df = pd.DataFrame(rows).fillna(0).astype(int)
 
         return df
 
