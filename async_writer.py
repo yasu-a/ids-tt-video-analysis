@@ -1,8 +1,8 @@
 import multiprocessing as mp
 import os
-import time
 
-import imageio.v2 as iio
+import imageio.v3 as iio
+import numpy as np
 
 import app_logging
 
@@ -14,29 +14,21 @@ logger = app_logging.create_logger(__name__)
 def _worker(q: mp.Queue, params: dict):
     # FIXME: stopping me sometimes requires process kill
 
-    # noinspection PyTypeChecker
-    out = iio.get_writer(
-        params['path'],
-        format='FFMPEG',
-        fps=params['fps'],
-        mode='I',
-        codec='h264',
-        quality=4
-    )
+    with iio.imopen(params['path'], "w", plugin="pyav") as out:
+        logger.info(f'Worker started: {out}')
+        out.init_video_stream("vp9", fps=params['fps'])
 
-    logger.info(f'Worker started: {out}')
-
-    while True:
-        if q.empty():
-            time.sleep(0.01)
-        else:
-            frame = q.get(block=False)
+        while True:
+            frame = q.get(block=True)
             if frame is None:
                 break
-            out.append_data(frame)
+            if frame.ndim == 2:
+                frame = np.repeat(frame[..., None], repeats=3, axis=2)
+            if not (frame.ndim == 3 and frame.shape[2] == 3):
+                logger.error(f'invalid frame shape {frame.shape}')
+                break
+            out.write_frame(frame)
 
-    logger.info('Closing worker ...')
-    out.close()
     logger.info('Worker closed')
 
 
@@ -65,4 +57,5 @@ class AsyncVideoFrameWriter:
         logger.info('Exit')
         self.__q.put(None)
         self.__p.join()
+        logger.info('Joined')
         return False
