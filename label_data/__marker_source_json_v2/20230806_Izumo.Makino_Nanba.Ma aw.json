@@ -696,11 +696,13 @@
   },
   "meta": {
     "author": {
-      "name": "Aoi Watanabe"
+      "hash-digest": "c02ab5cbd1d4cc0a0f1fcd89236f2380",
+      "node": "AoiWatanabe",
+      "system": "Windows"
     },
     "converted": true,
-    "json-version": 2,
     "hand-converted": true,
+    "json-version": 2,
     "video-name": "20230806_Izumo.Makino_Nanba.Ma"
   }
 }
