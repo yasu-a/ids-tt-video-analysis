@@ -78,6 +78,9 @@ class ProcessStageLKMotionDump(process.ProcessStage):
             video_dump_path,
             original_resizing_scale=0.3
     ):
+        # TODO: allow detect_interval_frames>=2
+        assert detect_interval_frames == 1, 'detect_interval_frames must be 1'
+
         self.__video_name = video_name
         logger.info(f'{video_name=}')
 
