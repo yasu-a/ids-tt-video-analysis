@@ -1,7 +1,7 @@
 if __name__ == '__main__':
     import main
 
-    run_name = 'mu2-debug'
+    run_name = 'ugt-debug'
 
     if run_name == 'marker-full-restore':
         import shutil
@@ -20,6 +20,8 @@ if __name__ == '__main__':
         argv = ['vpm', '20230219_03_Narumoto_Ito', '--start', '300', '--stop', '600']
     elif run_name == 'mu2-debug':
         argv = ['mu2']
+    elif run_name == 'ugt-debug':
+        argv = ['ugt']
     else:
         assert False, run_name
 
