@@ -156,12 +156,14 @@ def dump_motion_feature(video_name):
         #     show(i)
 
         def to_csv(video_name):
+            os.makedirs('./csv_out', exist_ok=True)
+            csv_path = f'./csv_out/{video_name}.csv'
+            if os.path.exists(csv_path):
+                return
             df_y = pd.read_csv(os.path.join('./label_data/grand_truth', video_name + '.csv'))
             df_x = generate_dataframe(df_y.index).astype(np.float16)
             df = df_x.join(df_y)
-            print(df)
-            os.makedirs('./csv_out', exist_ok=True)
-            df.to_csv(f'./csv_out/{video_name}.csv')
+            df.to_csv(csv_path)
 
         to_csv(video_name)
 
@@ -171,7 +173,11 @@ if __name__ == '__main__':
         video_names = {sp.entity for sp in storage.StoragePath.list_storages()}
 
         for video_name in video_names:
-            dump_motion_feature(video_name)
+            try:
+                dump_motion_feature(video_name)
+            except:
+                import traceback
+                traceback.print_exc()
             print(f'WROTE {video_name}.csv')
 
 
