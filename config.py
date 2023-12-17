@@ -1,5 +1,6 @@
 import functools
 import json
+import os.path
 import platform
 
 __all__ = 'config',
@@ -14,9 +15,15 @@ class Config:
     def enable_debug_mode(cls):
         cls._debug = True
 
+    def test_location(self):
+        if not os.path.exists(self.video_location):
+            raise ValueError(f'Configured location not found: \'{self.video_location}\'')
+
     def __init__(self, json_path):
         with open(json_path, 'r') as f:
             self.__data = json.load(f)
+
+        self.test_location()
 
     @property
     def _data(self):
