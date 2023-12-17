@@ -15,9 +15,8 @@ import train_input
 
 storage.context.forbid_writing = True
 
-if __name__ == '__main__':
-    video_name = '20230205_04_Narumoto_Harimoto'
 
+def dump_motion_feature(video_name):
     vw = async_writer.AsyncVideoFrameWriter(
         path='out.mp4',
         fps=10
@@ -39,7 +38,6 @@ if __name__ == '__main__':
         assert isinstance(snp_lk_motion, snp.NumpyStorage)
         assert isinstance(snp_frames, snp.NumpyStorage)
 
-
         def extract_vector_complex(i):
             entry: snp_context.SNPEntryLKMotion = snp_lk_motion.get_entry(i)
 
@@ -57,7 +55,6 @@ if __name__ == '__main__':
             z = length * np.exp(1j * angle)
             return start, z
 
-
         def bag_collector(z):
             assert z.ndim == 1, z.shape
 
@@ -73,9 +70,7 @@ if __name__ == '__main__':
 
             return z_masked.mean()
 
-
         N_BANDS = 16
-
 
         @functools.cache
         def band_of_features(i):
@@ -95,7 +90,6 @@ if __name__ == '__main__':
             z_mean.setflags(write=False)
 
             return z_mean
-
 
         def generate_row_dct(i):
             z = band_of_features(i)  # z_mean on each band
@@ -121,14 +115,11 @@ if __name__ == '__main__':
 
             return dct
 
-
         def generate_dataframe(indexes):
             rows = [generate_row_dct(i) for i in tqdm(indexes)]
             return pd.DataFrame(rows)
 
-
         ARROW_FACTOR = 60
-
 
         def show(ei):
             frame_entry: snp_context.SNPEntryVideoFrame = snp_frames.get_entry(ei)
@@ -161,7 +152,6 @@ if __name__ == '__main__':
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             vw.write(img)
 
-
         # for i in tqdm(range(200, 300)):
         #     show(i)
 
@@ -172,107 +162,12 @@ if __name__ == '__main__':
             print(df)
             df.to_csv(f'{video_name}.csv')
 
+        to_csv(video_name)
 
-        to_csv('20230205_04_Narumoto_Harimoto')
 
-        # @functools.cache
-        # def tile_feature(i):
-        #     entry: snp_context.SNPEntryLKMotion = snp_lk_motion.get_entry(i)
-        #
-        #     mask = ~np.any(np.isnan(entry.start), axis=1)
-        #
-        #     if entry.start is None:
-        #         return None, None
-        #
-        #     start = entry.start[mask, :]
-        #     velocity = entry.velocity[mask, :]
-        #
-        #     angle = np.arctan2(velocity[:, 1], velocity[:, 0])  # arctan2 receives (y, x)
-        #     # print(velocity[:, 0].mean(), velocity[:, 1].mean(), angle.mean())
-        #     length = np.linalg.norm(velocity, axis=1)
-        #
-        #     idx = (start * N).astype(int)
-        #     idx_flatten = idx[:, 0] * N + idx[:, 1]
-        #
-        #     vel_ag_mean = np.zeros(shape=(N, N))
-        #     vel_ln_mean = np.zeros(shape=(N, N))
-        #     for xi in range(N):
-        #         for yi in range(N):
-        #             a = angle[idx_flatten == xi * N + yi]
-        #             l = length[idx_flatten == xi * N + yi]
-        #             if a.size:
-        #                 vel_ag_mean[xi, yi] = a.mean()
-        #                 vel_ln_mean[xi, yi] = l[l >= np.percentile(l, 50)].mean()
-        #             else:
-        #                 vel_ag_mean[xi, yi] = np.nan
-        #
-        #     vel_ag_mean.setflags(write=False)
-        #     vel_ln_mean.setflags(write=False)
-        #
-        #     return vel_ag_mean, vel_ln_mean
-        #
-        #
-        # def tile_feature_interpolate(i):
-        #     assert i == int(i), i
-        #     i = int(i)
-        #     vel_ag_mean, vel_ln_mean = tile_feature(i)
-        #     assert vel_ag_mean is not None
-        #     return vel_ag_mean, vel_ln_mean
-        #
-        #
-        # def feature(i):
-        #     f_ag, f_ln = [], []
-        #     for j in range(i - 30 * 6, i + 30 * 6, 5):
-        #         vel_ag_mean, vel_ln_mean = tile_feature_interpolate(j)
-        #         f_ag.append(vel_ag_mean)
-        #         f_ln.append(vel_ln_mean)
-        #     f_ag, f_ln = np.stack(f_ag, axis=2), np.stack(f_ln, axis=2)
-        #     return f_ag, f_ln
-        #
-        #
-        # def show(i):
-        #     frame_entry: snp_context.SNPEntryVideoFrame = snp_frames.get_entry(i)
-        #     original = frame_entry.original.copy()
-        #
-        #     vel_ag_mean, vel_ln_mean = tile_feature_interpolate(frame_entry.fi)
-        #
-        #     S = 512
-        #
-        #     original = original[train_input.frame_rects.actual_scaled(
-        #         video_name,
-        #         width=original.shape[1],
-        #         height=original.shape[0]
-        #     ).index3d]
-        #     original = cv2.cvtColor(original, cv2.COLOR_RGB2BGR)
-        #     img = cv2.resize(original, (S, S))
-        #     for xi in range(N):
-        #         for yi in range(N):
-        #             ag = vel_ag_mean[xi, yi]
-        #             if np.isnan(ag):
-        #                 continue
-        #             ln = vel_ln_mean[xi, yi]
-        #             s = np.array([xi, yi]) / N * S + S / N / 2
-        #             d = np.array([np.cos(ag), np.sin(ag)]) * ln * (S * 0.2)
-        #
-        #             cv2.arrowedLine(
-        #                 img,
-        #                 tuple(map(int, s)),
-        #                 tuple(map(int, s + d)),
-        #                 (0, 255, 255),
-        #                 thickness=2,
-        #                 tipLength=0.3
-        #             )
-        #     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        #     vw.write(img)
-        #
-        #     # plt.figure()
-        #     # sns.heatmap(vel_ag_mean)
-        #     # plt.show()
-        #     # plt.close()
-        #     # time.sleep(0.5)
-        #
-        #
-        # a = snp_lk_motion
-        # print()
-        # for i in tqdm(range(200, 400)):
-        #     show(i)
+if __name__ == '__main__':
+    def main():
+        print(storage.StoragePath.list_storages())
+
+
+    main()

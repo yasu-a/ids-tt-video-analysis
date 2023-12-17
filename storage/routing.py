@@ -36,17 +36,20 @@ class StoragePath(NamedTuple):
 
     @classmethod
     def list_storages(cls):
-        for root, dir_names, file_names in os.walk(root_location()):
-            for file_name in file_names:
-                if file_name != 'meta.json':
-                    continue
-                # first element is always empty
-                _, domain, entity, context, *args \
-                    = os.path.normpath(root)[len(root_location()):].split(os.sep)
-                yield StoragePath(
-                    domain=domain,
-                    entity=entity,
-                    context=context,
-                    args=args
-                )
-                dir_names.clear()
+        def it():
+            for root, dir_names, file_names in os.walk(root_location()):
+                for file_name in file_names:
+                    if file_name != 'meta.json':
+                        continue
+                    # first element is always empty
+                    _, domain, entity, context, *args \
+                        = os.path.normpath(root)[len(root_location()):].split(os.sep)
+                    yield StoragePath(
+                        domain=domain,
+                        entity=entity,
+                        context=context,
+                        args=args
+                    )
+                    dir_names.clear()
+
+        return list(it())
