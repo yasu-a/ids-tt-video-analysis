@@ -170,7 +170,7 @@ if __name__ == '__main__':
             df_x = generate_dataframe(df_y.index).astype(np.float16)
             df = df_x.join(df_y)
             print(df)
-            df.to_csv('out.csv')
+            df.to_csv(f'{video_name}.csv')
 
 
         to_csv('20230205_04_Narumoto_Harimoto')
