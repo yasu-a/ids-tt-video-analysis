@@ -160,14 +160,19 @@ def dump_motion_feature(video_name):
             df_x = generate_dataframe(df_y.index).astype(np.float16)
             df = df_x.join(df_y)
             print(df)
-            df.to_csv(f'{video_name}.csv')
+            os.makedirs('./csv_out', exist_ok=True)
+            df.to_csv(f'./csv_out/{video_name}.csv')
 
         to_csv(video_name)
 
 
 if __name__ == '__main__':
     def main():
-        print(storage.StoragePath.list_storages())
+        video_names = {sp.entity for sp in storage.StoragePath.list_storages()}
+
+        for video_name in video_names:
+            dump_motion_feature(video_name)
+            print(f'WROTE {video_name}.csv')
 
 
     main()
