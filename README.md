@@ -1,3 +1,5 @@
+近いうちに[Repository:yasu-a/ids-tt-video-analysis-essentials](https://github.com/yasu-a/ids-tt-video-analysis-essentials)にうつります。
+
 # ids-tt-video-analysis
 Tチーム動画分析のリポジトリです。
 
