@@ -1,0 +1,1841 @@
+{
+  "frames": {
+    "12555": {
+      "fi": 12555,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "12627": {
+      "fi": 12627,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "12699": {
+      "fi": 12699,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "13035": {
+      "fi": 13035,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "13097": {
+      "fi": 13097,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "13157": {
+      "fi": 13157,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "1328": {
+      "fi": 1328,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "13576": {
+      "fi": 13576,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "13611": {
+      "fi": 13611,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "13659": {
+      "fi": 13659,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "1401": {
+      "fi": 1401,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "14031": {
+      "fi": 14031,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "14090": {
+      "fi": 14090,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "14150": {
+      "fi": 14150,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "14558": {
+      "fi": 14558,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "14622": {
+      "fi": 14622,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "14688": {
+      "fi": 14688,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "15048": {
+      "fi": 15048,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "15125": {
+      "fi": 15125,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "15173": {
+      "fi": 15173,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "1539": {
+      "fi": 1539,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "15718": {
+      "fi": 15718,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "15778": {
+      "fi": 15778,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "15844": {
+      "fi": 15844,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "16168": {
+      "fi": 16168,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "16210": {
+      "fi": 16210,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "16306": {
+      "fi": 16306,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "16804": {
+      "fi": 16804,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "16874": {
+      "fi": 16874,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "16922": {
+      "fi": 16922,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "17120": {
+      "fi": 17120,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "17186": {
+      "fi": 17186,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "17270": {
+      "fi": 17270,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "17744": {
+      "fi": 17744,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "17810": {
+      "fi": 17810,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "17852": {
+      "fi": 17852,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "18290": {
+      "fi": 18290,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "18337": {
+      "fi": 18337,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "18421": {
+      "fi": 18421,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "18835": {
+      "fi": 18835,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "18898": {
+      "fi": 18898,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "19071": {
+      "fi": 19071,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "1953": {
+      "fi": 1953,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "19737": {
+      "fi": 19737,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "19805": {
+      "fi": 19805,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "19883": {
+      "fi": 19883,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "2011": {
+      "fi": 2011,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "20351": {
+      "fi": 20351,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "20423": {
+      "fi": 20423,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "20471": {
+      "fi": 20471,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "2083": {
+      "fi": 2083,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "20969": {
+      "fi": 20969,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "21033": {
+      "fi": 21033,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "21081": {
+      "fi": 21081,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "21249": {
+      "fi": 21249,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "21307": {
+      "fi": 21307,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "21403": {
+      "fi": 21403,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "21919": {
+      "fi": 21919,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "21992": {
+      "fi": 21992,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "22082": {
+      "fi": 22082,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "22622": {
+      "fi": 22622,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "22694": {
+      "fi": 22694,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "22766": {
+      "fi": 22766,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "2503": {
+      "fi": 2503,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "25520": {
+      "fi": 25520,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "25592": {
+      "fi": 25592,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "2566": {
+      "fi": 2566,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "25718": {
+      "fi": 25718,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "26054": {
+      "fi": 26054,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "26108": {
+      "fi": 26108,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "26159": {
+      "fi": 26159,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "2626": {
+      "fi": 2626,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "26528": {
+      "fi": 26528,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "26609": {
+      "fi": 26609,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "26711": {
+      "fi": 26711,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "27137": {
+      "fi": 27137,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "27203": {
+      "fi": 27203,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "27251": {
+      "fi": 27251,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "27677": {
+      "fi": 27677,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "27737": {
+      "fi": 27737,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "27827": {
+      "fi": 27827,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "28097": {
+      "fi": 28097,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "28161": {
+      "fi": 28161,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "28233": {
+      "fi": 28233,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "2830": {
+      "fi": 2830,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "28707": {
+      "fi": 28707,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "28765": {
+      "fi": 28765,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "28838": {
+      "fi": 28838,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "2892": {
+      "fi": 2892,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "294": {
+      "fi": 294,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "29516": {
+      "fi": 29516,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "29576": {
+      "fi": 29576,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "29648": {
+      "fi": 29648,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "2976": {
+      "fi": 2976,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "30068": {
+      "fi": 30068,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "30129": {
+      "fi": 30129,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "30139": {
+      "fi": 30139,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "30565": {
+      "fi": 30565,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "30634": {
+      "fi": 30634,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "30742": {
+      "fi": 30742,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "31114": {
+      "fi": 31114,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "31174": {
+      "fi": 31174,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "31204": {
+      "fi": 31204,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "31528": {
+      "fi": 31528,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "31601": {
+      "fi": 31601,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "31727": {
+      "fi": 31727,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "32201": {
+      "fi": 32201,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "32270": {
+      "fi": 32270,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "32351": {
+      "fi": 32351,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "32621": {
+      "fi": 32621,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "32675": {
+      "fi": 32675,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "32737": {
+      "fi": 32737,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "33103": {
+      "fi": 33103,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "33165": {
+      "fi": 33165,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "33229": {
+      "fi": 33229,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "3330": {
+      "fi": 3330,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "33541": {
+      "fi": 33541,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "33597": {
+      "fi": 33597,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "33687": {
+      "fi": 33687,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "3402": {
+      "fi": 3402,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "34095": {
+      "fi": 34095,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "34169": {
+      "fi": 34169,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "34295": {
+      "fi": 34295,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "3468": {
+      "fi": 3468,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "34805": {
+      "fi": 34805,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "34860": {
+      "fi": 34860,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "34902": {
+      "fi": 34902,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "35526": {
+      "fi": 35526,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "35599": {
+      "fi": 35599,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "35743": {
+      "fi": 35743,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "361": {
+      "fi": 361,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "38491": {
+      "fi": 38491,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "38559": {
+      "fi": 38559,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "38701": {
+      "fi": 38701,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "39145": {
+      "fi": 39145,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "39211": {
+      "fi": 39211,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "39265": {
+      "fi": 39265,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "39739": {
+      "fi": 39739,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "39811": {
+      "fi": 39811,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "39925": {
+      "fi": 39925,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "40405": {
+      "fi": 40405,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "40450": {
+      "fi": 40450,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "40481": {
+      "fi": 40481,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "4050": {
+      "fi": 4050,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "41045": {
+      "fi": 41045,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "41118": {
+      "fi": 41118,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "41143": {
+      "fi": 41143,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "4125": {
+      "fi": 4125,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "41617": {
+      "fi": 41617,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "41684": {
+      "fi": 41684,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "41750": {
+      "fi": 41750,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "4197": {
+      "fi": 4197,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "42283": {
+      "fi": 42283,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "42355": {
+      "fi": 42355,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "42487": {
+      "fi": 42487,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "43051": {
+      "fi": 43051,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "43141": {
+      "fi": 43141,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "43213": {
+      "fi": 43213,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "43687": {
+      "fi": 43687,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "43755": {
+      "fi": 43755,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "43839": {
+      "fi": 43839,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "44337": {
+      "fi": 44337,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "44424": {
+      "fi": 44424,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "445": {
+      "fi": 445,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "44502": {
+      "fi": 44502,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "45048": {
+      "fi": 45048,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "45116": {
+      "fi": 45116,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "45152": {
+      "fi": 45152,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "45662": {
+      "fi": 45662,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "45734": {
+      "fi": 45734,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "45837": {
+      "fi": 45837,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "4611": {
+      "fi": 4611,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "46317": {
+      "fi": 46317,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "46378": {
+      "fi": 46378,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "46418": {
+      "fi": 46418,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "4687": {
+      "fi": 4687,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "47078": {
+      "fi": 47078,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "47154": {
+      "fi": 47154,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "47286": {
+      "fi": 47286,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "4765": {
+      "fi": 4765,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "47838": {
+      "fi": 47838,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "47912": {
+      "fi": 47912,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "48032": {
+      "fi": 48032,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "48476": {
+      "fi": 48476,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "48541": {
+      "fi": 48541,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "48660": {
+      "fi": 48660,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "49236": {
+      "fi": 49236,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "49299": {
+      "fi": 49299,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "49342": {
+      "fi": 49342,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "5191": {
+      "fi": 5191,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "52396": {
+      "fi": 52396,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "52456": {
+      "fi": 52456,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "52492": {
+      "fi": 52492,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "5264": {
+      "fi": 5264,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "53080": {
+      "fi": 53080,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "53122": {
+      "fi": 53122,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "5318": {
+      "fi": 5318,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "53272": {
+      "fi": 53272,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "54106": {
+      "fi": 54106,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "54177": {
+      "fi": 54177,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "54207": {
+      "fi": 54207,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "54621": {
+      "fi": 54621,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "54685": {
+      "fi": 54685,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "54719": {
+      "fi": 54719,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "5690": {
+      "fi": 5690,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "57521": {
+      "fi": 57521,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "5756": {
+      "fi": 5756,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "57578": {
+      "fi": 57578,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "57634": {
+      "fi": 57634,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "58126": {
+      "fi": 58126,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "58199": {
+      "fi": 58199,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "58402": {
+      "fi": 58402,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "5859": {
+      "fi": 5859,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "59176": {
+      "fi": 59176,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "59253": {
+      "fi": 59253,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "59304": {
+      "fi": 59304,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "62018": {
+      "fi": 62018,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "62094": {
+      "fi": 62094,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "62144": {
+      "fi": 62144,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "62636": {
+      "fi": 62636,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "62719": {
+      "fi": 62719,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "62839": {
+      "fi": 62839,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "6291": {
+      "fi": 6291,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "63331": {
+      "fi": 63331,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "63398": {
+      "fi": 63398,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "63493": {
+      "fi": 63493,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "6365": {
+      "fi": 6365,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "64418": {
+      "fi": 64418,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "64481": {
+      "fi": 64481,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "64564": {
+      "fi": 64564,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "6491": {
+      "fi": 6491,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "65296": {
+      "fi": 65296,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "65351": {
+      "fi": 65351,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "65418": {
+      "fi": 65418,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "66120": {
+      "fi": 66120,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "66188": {
+      "fi": 66188,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "66248": {
+      "fi": 66248,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "67040": {
+      "fi": 67040,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "67103": {
+      "fi": 67103,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "67145": {
+      "fi": 67145,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "67661": {
+      "fi": 67661,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "67722": {
+      "fi": 67722,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "67768": {
+      "fi": 67768,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "6887": {
+      "fi": 6887,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "6955": {
+      "fi": 6955,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "7057": {
+      "fi": 7057,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "787": {
+      "fi": 787,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "8005": {
+      "fi": 8005,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "8065": {
+      "fi": 8065,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "8119": {
+      "fi": 8119,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "842": {
+      "fi": 842,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "8443": {
+      "fi": 8443,
+      "label": "Stay",
+      "tags": [
+        "Home"
+      ]
+    },
+    "8515": {
+      "fi": 8515,
+      "label": "Play",
+      "tags": [
+        "Home"
+      ]
+    },
+    "866": {
+      "fi": 866,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "8689": {
+      "fi": 8689,
+      "label": "Ready",
+      "tags": [
+        "Home"
+      ]
+    },
+    "9121": {
+      "fi": 9121,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "9189": {
+      "fi": 9189,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "9291": {
+      "fi": 9291,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    },
+    "9705": {
+      "fi": 9705,
+      "label": "Stay",
+      "tags": [
+        "Away"
+      ]
+    },
+    "9765": {
+      "fi": 9765,
+      "label": "Play",
+      "tags": [
+        "Away"
+      ]
+    },
+    "9825": {
+      "fi": 9825,
+      "label": "Ready",
+      "tags": [
+        "Away"
+      ]
+    }
+  },
+  "meta": {
+    "author": {
+      "hash-digest": "86cff6d4b7e80587defef2e48c78a2b1",
+      "node": "LAPTOP-2J24C2MD",
+      "system": "Windows"
+    },
+    "converted": false,
+    "json-version": 2,
+    "video-name": "20230806_Narumoto_Yuan"
+  }
+}
