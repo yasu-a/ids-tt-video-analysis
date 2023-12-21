@@ -1,5 +1,4 @@
 import argparse
-import collections
 import sys
 
 import numpy as np
@@ -14,17 +13,6 @@ np.set_printoptions(threshold=65536)
 npstorage_context.just_run_registration()
 
 app_logging.set_log_level(app_logging.WARN)
-
-"""
-inspect context
-inspect struct frames
-inspect meta frames
-inspect value[s] frames 10
-inspect value[s] frames --at 10
-inspect value[s] frames 10 [20 [5]]
-inspect value[s] frames  --start 10 [--stop 20 [--step 5]] [--key motion]
-inspect none/null/check/check_null frames
-"""
 
 _operation_parser = {}
 
@@ -65,24 +53,52 @@ class OperationContext(OperationBase):
             description='Inspect dumps of storage.npstorage'
         )
         parser.add_argument('-s', '--size', '-f', '--files', action='store_true')
+        parser.add_argument('-p', '--order', nargs=1, type=str, default=None)
         return parser
 
     def run(self):
         args = self.parse()
 
-        dct = collections.defaultdict(lambda: collections.defaultdict(list))
+        import pandas as pd
+        pd.set_option('display.max_columns', 500)
+        pd.set_option('display.max_rows', 500)
+        pd.set_option('display.width', 190)
+        pd.set_option('display.max_colwidth', 200)
+
+        lst = []
         for sp in storage.StoragePath.list_storages():
-            dct[sp.domain][sp.entity].append(sp)
-        for domain, domain_dct in dct.items():
-            print(f'[Domain] {domain!r}')
-            for entity, sp_lst in domain_dct.items():
-                print(f' [Entity] {entity!r}')
-                for sp in sp_lst:
-                    print(f'  [Context] {sp.context!r}')
-                    print(f'   {sp.path} {sp.total_size // 1000:20,d} KB')
-                    if args.size:
-                        for path, size in sp.list_sizes():
-                            print(f'   - .{path[len(sp.path):]:40s} {size // 1000:20,d} KB')
+            lst.append(
+                dict(
+                    domain=sp.domain,
+                    entity=sp.entity,
+                    context=sp.context,
+                    size=sp.total_size,
+                    path=sp.path
+                )
+            )
+
+        df = pd.DataFrame(lst)
+        df['size'] = df['size'].map('{:,}'.format)
+        if args.order:
+            df = df.sort_values(by=args.order)
+        print(df)
+
+        if args.size:
+            raise ValueError('option --size or --files is currently disabled')
+
+        # dct = collections.defaultdict(lambda: collections.defaultdict(list))
+        # for sp in storage.StoragePath.list_storages():
+        #     dct[sp.domain][sp.entity].append(sp)
+        # for domain, domain_dct in dct.items():
+        #     print(f'[Domain] {domain!r}')
+        #     for entity, sp_lst in domain_dct.items():
+        #         print(f' [Entity] {entity!r}')
+        #         for sp in sp_lst:
+        #             print(f'  [Context] {sp.context!r}')
+        #             print(f'   {sp.path} {sp.total_size // 1000:20,d} KB')
+        #             if args.size:
+        #                 for path, size in sp.list_sizes():
+        #                     print(f'   - .{path[len(sp.path):]:40s} {size // 1000:20,d} KB')
 
 
 def index_validater(value):
