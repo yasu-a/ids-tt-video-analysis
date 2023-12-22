@@ -17,26 +17,18 @@ storage.context.forbid_writing = True
 
 
 def dump_motion_feature(video_name):
-    vw = async_writer.AsyncVideoFrameWriter(
-        path='out.mp4',
-        fps=10
-    )
     snp_lk_motion = storage.create_instance(
         domain='numpy_storage',
         entity=video_name,
         context='lk_motion',
         mode='r',
     )
-    snp_frames = storage.create_instance(
-        domain='numpy_storage',
-        entity=video_name,
-        context='frames',
-        mode='r',
-    )
 
-    with vw as vw, snp_lk_motion as snp_lk_motion, snp_frames as snp_frames:
+    with snp_lk_motion as snp_lk_motion:
         assert isinstance(snp_lk_motion, snp.NumpyStorage)
-        assert isinstance(snp_frames, snp.NumpyStorage)
+
+        if np.any(np.isnan(snp_lk_motion.get_array('timestamp'))):
+            raise ValueError('lk_motion contains nan')
 
         def extract_vector_complex(i):
             entry: snp_context.SNPEntryLKMotion = snp_lk_motion.get_entry(i)
@@ -122,35 +114,48 @@ def dump_motion_feature(video_name):
         ARROW_FACTOR = 60
 
         def show(ei):
-            frame_entry: snp_context.SNPEntryVideoFrame = snp_frames.get_entry(ei)
+            vw = async_writer.AsyncVideoFrameWriter(
+                path='out.mp4',
+                fps=10
+            )
+            snp_frames = storage.create_instance(
+                domain='numpy_storage',
+                entity=video_name,
+                context='frames',
+                mode='r',
+            )
 
-            row = generate_row_dct(int(frame_entry.fi))
+            with snp_frames as snp_frames, vw as vw:
+                frame_entry: snp_context.SNPEntryVideoFrame = snp_frames.get_entry(ei)
+                assert isinstance(snp_frames, snp.NumpyStorage)
 
-            img = frame_entry.original.copy()
-            img = img[train_input.frame_rects.actual_scaled(
-                video_name,
-                width=img.shape[1],
-                height=img.shape[0]
-            ).index3d]
-            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-            img = cv2.resize(img, None, fx=2, fy=2)
-            h, w, _ = img.shape
+                row = generate_row_dct(int(frame_entry.fi))
 
-            for i in range(N_BANDS):
-                dx, dy = row[f'x_{i}'] * ARROW_FACTOR, row[f'y_{i}'] * ARROW_FACTOR
-                start = w // 2, h // N_BANDS * i + h // N_BANDS // 2
-                end = start[0] + int(dx), start[1] + int(dy)
-                cv2.arrowedLine(
-                    img,
-                    start,
-                    end,
-                    (0, 255, 255),
-                    thickness=2,
-                    tipLength=0.3
-                )
+                img = frame_entry.original.copy()
+                img = img[train_input.frame_rects.actual_scaled(
+                    video_name,
+                    width=img.shape[1],
+                    height=img.shape[0]
+                ).index3d]
+                img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                img = cv2.resize(img, None, fx=2, fy=2)
+                h, w, _ = img.shape
 
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            vw.write(img)
+                for i in range(N_BANDS):
+                    dx, dy = row[f'x_{i}'] * ARROW_FACTOR, row[f'y_{i}'] * ARROW_FACTOR
+                    start = w // 2, h // N_BANDS * i + h // N_BANDS // 2
+                    end = start[0] + int(dx), start[1] + int(dy)
+                    cv2.arrowedLine(
+                        img,
+                        start,
+                        end,
+                        (0, 255, 255),
+                        thickness=2,
+                        tipLength=0.3
+                    )
+
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                vw.write(img)
 
         # for i in tqdm(range(200, 300)):
         #     show(i)
@@ -159,26 +164,43 @@ def dump_motion_feature(video_name):
             os.makedirs('./csv_out', exist_ok=True)
             csv_path = f'./csv_out/{video_name}.csv'
             if os.path.exists(csv_path):
-                return
+                return 'csv exists'
             df_y = pd.read_csv(os.path.join('./label_data/grand_truth', video_name + '.csv'))
             df_x = generate_dataframe(df_y.index).astype(np.float16)
             df = df_x.join(df_y)
             df.to_csv(csv_path)
+            return 'SUCCESS'
 
-        to_csv(video_name)
+        return to_csv(video_name)
 
 
 if __name__ == '__main__':
     def main():
         video_names = {sp.entity for sp in storage.StoragePath.list_storages()}
 
+        result = []
+
         for video_name in video_names:
             try:
-                dump_motion_feature(video_name)
-            except:
+                flag = dump_motion_feature(video_name)
+            except Exception as e:
                 import traceback
                 traceback.print_exc()
-            print(f'WROTE {video_name}.csv')
+                flag = str(e)
+            result.append(
+                dict(
+                    video_name=video_name,
+                    flag=flag
+                )
+            )
+
+        import pandas as pd
+        pd.set_option('display.max_columns', 500)
+        pd.set_option('display.max_rows', 500)
+        pd.set_option('display.width', 190)
+        pd.set_option('display.max_colwidth', 200)
+
+        print(pd.DataFrame(result))
 
 
     main()
