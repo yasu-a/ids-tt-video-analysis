@@ -5,7 +5,8 @@
       "data-location": "H:/idstt/video_analysis",
       "debug-data-location": "H:/idstt/video_analysis/__debug__",
       "video-location": "H:/idsttvideos/singles",
-      "default-video-name": "20230205_04_Narumoto_Harimoto"
+      "default-video-name": "20230205_04_Narumoto_Harimoto",
+      "max-n-jobs": 3
     },
     "DESKTOP-C4V3D9S": {
       ".comment": "Surface of yasu.a",
@@ -16,7 +17,8 @@
       ".inherit": "DESKTOP-O6M276J",
       "data-location": "D:/idstt/video_analysis",
       "debug-data-location": "D:/idstt/video_analysis/__debug__",
-      "video-location": "D:/idsttvideos/singles"
+      "video-location": "D:/idsttvideos/singles",
+      "max-n-jobs": 10
     }
   }
 }

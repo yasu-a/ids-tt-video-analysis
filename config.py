@@ -44,6 +44,10 @@ class Config:
     def default_video_name(self):
         return self['default-video-name']
 
+    @property
+    def max_n_jobs(self):
+        return self['max-n-jobs']
+
     @functools.cache
     def _values_current_context(self, name=None):
         name = name or _device_name
