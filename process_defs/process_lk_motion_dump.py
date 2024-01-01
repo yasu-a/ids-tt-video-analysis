@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 
 import numpy as np
 
@@ -55,6 +56,7 @@ class ProcessStageLKMotionDump(process.ProcessStage):
         parser.add_argument('-m', '--min-velocity-full-normalized', type=float, default=0.05)
         parser.add_argument('-i', '--imshow', action='store_true')
         parser.add_argument('-o', '--video-dump-path', type=str, default='')
+        parser.add_argument('-f', '--forbid-writing', action='store_true')
 
     def __init__(
             self,
@@ -76,6 +78,7 @@ class ProcessStageLKMotionDump(process.ProcessStage):
             min_velocity_full_normalized,
             imshow,
             video_dump_path,
+            forbid_writing,
             original_resizing_scale=0.3
     ):
         # TODO: allow detect_interval_frames>=2
@@ -86,6 +89,9 @@ class ProcessStageLKMotionDump(process.ProcessStage):
 
         self.__max_points_per_frame = max_points_per_frame
         logger.info(f'{max_points_per_frame=}')
+
+        self.__forbid_writing = forbid_writing
+        logger.info(f'{forbid_writing=}')
 
         import cv2
 
@@ -115,20 +121,35 @@ class ProcessStageLKMotionDump(process.ProcessStage):
         )
 
     def run(self):
+        if self.__forbid_writing:
+            storage.context.forbid_writing = True
+
         frame_producer = lk.FrameProducer.from_video_name(self.__video_name)
         frame_count = frame_producer.meta.frame_count
 
         detector = lk.LKMotionDetector(self.__parameter)
         computer = detector.computer(frame_producer)
 
-        with storage.create_instance(
-                domain='numpy_storage',
-                entity=self.__video_name,
-                context='lk_motion',
-                mode='w',
-                n_entries=frame_count
+        @contextlib.contextmanager
+        def conditional_context(*, context_producer, disable_if):
+            if disable_if:
+                yield None
+            else:
+                with context_producer() as obj:
+                    yield obj
+
+        with conditional_context(
+                context_producer=lambda: storage.create_instance(
+                    domain='numpy_storage',
+                    entity=self.__video_name,
+                    context='lk_motion',
+                    mode='w',
+                    n_entries=frame_count
+                ),
+                disable_if=self.__forbid_writing
         ) as snp_lk_motion:
-            assert isinstance(snp_lk_motion, snp.NumpyStorage)
+            if snp_lk_motion is not None:
+                assert isinstance(snp_lk_motion, snp.NumpyStorage)
 
             for frame, tracks in computer.iter_results():
                 assert isinstance(frame, lk.LKDetectorFrame), frame
@@ -167,4 +188,5 @@ class ProcessStageLKMotionDump(process.ProcessStage):
                     timestamp=frame.timestamp,
                     fi=frame.frame_index
                 )
-                snp_lk_motion[frame.frame_index] = entry
+                if snp_lk_motion is not None:
+                    snp_lk_motion[frame.frame_index] = entry
