@@ -92,14 +92,11 @@ class DumpMotionFeature:
             grid_idx_xy = (s * self.NUM_GRIDS).astype(np.int32)
             grid_idx_serial = grid_idx_xy[:, 0] * self.NUM_GRIDS[1] + grid_idx_xy[:, 1]
 
-            v_encoded = ((np.clip(v, -2, 2) + 2) / 4 * 2 ** 15).astype(np.int32)
-            v_encoded = (v_encoded[:, 0] + 1) << 15 | (v_encoded[:, 1] + 1)
-
-            mat = np.full(shape=self.NUM_GRIDS, dtype=np.int32, fill_value=0)
+            mat = np.full(shape=(*self.NUM_GRIDS, 2), dtype=np.float16, fill_value=np.nan)
             for x, y in itertools.product(range(self.NUM_GRIDS[0]), range(self.NUM_GRIDS[1])):
                 max_idx = nanargmax(v_norm[grid_idx_serial == x * self.NUM_GRIDS[1] + y])
                 if max_idx >= 0:  # nanargmax returns a valid index
-                    mat[x, y] = v_encoded[max_idx]
+                    mat[x, y, :] = v[max_idx].round(4)
 
             row = int(entry.fi), float(entry.timestamp), *mat.ravel()
             yield row
@@ -128,9 +125,10 @@ class DumpMotionFeature:
             'fi',
             'ts',
             *(
-                f'grid_{x}_{y}'
+                f'{axis}_{x}_{y}'
                 for x in range(self.NUM_GRIDS[0])
                 for y in range(self.NUM_GRIDS[1])
+                for axis in 'xy'
             ),
             *self._gt_header
         ]
@@ -138,7 +136,6 @@ class DumpMotionFeature:
 
         df = pd.DataFrame(rows, columns=header)
         df['ts'] = df['ts'].round(5)
-        df = df.replace(0, '')
 
         df.to_csv(self._out_path)
 
@@ -161,7 +158,7 @@ if __name__ == '__main__':
 
         futures = {}
 
-        pool = concurrent.futures.ProcessPoolExecutor(max_workers=min(config.max_n_jobs, 3))
+        pool = concurrent.futures.ProcessPoolExecutor(max_workers=min(config.max_n_jobs, 4))
         with pool as pool:
             for video_name in video_names:
                 f = pool.submit(DumpMotionFeature.dump, video_name, force=force)
