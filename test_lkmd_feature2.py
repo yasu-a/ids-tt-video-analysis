@@ -87,6 +87,8 @@ class DumpMotionFeature:
             nonnull_index = ~np.isnan(s[:, 0])
             s, v = s[nonnull_index, :], v[nonnull_index, :]
 
+            src_vector_idx = np.arange(len(s))
+
             v_norm = np.linalg.norm(v, axis=1)
 
             grid_idx_xy = (s * self.NUM_GRIDS).astype(np.int32)
@@ -94,9 +96,11 @@ class DumpMotionFeature:
 
             mat = np.full(shape=(*self.NUM_GRIDS, 2), dtype=np.float16, fill_value=np.nan)
             for x, y in itertools.product(range(self.NUM_GRIDS[0]), range(self.NUM_GRIDS[1])):
-                max_idx = nanargmax(v_norm[grid_idx_serial == x * self.NUM_GRIDS[1] + y])
+                mask = grid_idx_serial == x * self.NUM_GRIDS[1] + y
+                max_idx = nanargmax(v_norm[mask])
                 if max_idx >= 0:  # nanargmax returns a valid index
-                    mat[x, y, :] = v[max_idx].round(4)
+                    src_max_idx = src_vector_idx[mask][max_idx]
+                    mat[x, y, :] = v[src_max_idx].round(4)
 
             row = int(entry.fi), float(entry.timestamp), *mat.ravel()
             yield row
