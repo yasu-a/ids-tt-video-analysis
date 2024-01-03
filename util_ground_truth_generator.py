@@ -24,7 +24,7 @@ pd.set_option('display.expand_frame_repr', False)
 logger = app_logging.create_logger(__name__)
 
 
-class GrandTruthGenerator:
+class GroundTruthGenerator:
     def __init__(self, fac: VideoFrameLabelFactory):
         self.__fac = fac
 
@@ -55,8 +55,8 @@ class GrandTruthGenerator:
 
         return cls.VIDEO_FRAME_MARGIN, end - cls.VIDEO_FRAME_MARGIN
 
-    def create_grand_truth_dataframe(self, video_name):
-        logger.info(f'Creating grand truth dataframe for {video_name!r}')
+    def create_ground_truth_dataframe(self, video_name):
+        logger.info(f'Creating ground truth dataframe for {video_name!r}')
 
         label_sample_set = self.__fac[video_name]
         logger.debug(f'label_sample_set={pformat(list(label_sample_set))}')
@@ -119,9 +119,9 @@ class GrandTruthGenerator:
 
         return df
 
-    def dump_grand_truth_dataframe(self, video_name):
-        df = self.create_grand_truth_dataframe(video_name)
-        path = os.path.join('label_data/grand_truth', video_name + '.csv')
+    def dump_ground_truth_dataframe(self, video_name):
+        df = self.create_ground_truth_dataframe(video_name)
+        path = os.path.join('label_data/ground_truth', video_name + '.csv')
         os.makedirs(os.path.dirname(path), exist_ok=True)
         df.to_csv(path)
 
@@ -135,8 +135,8 @@ if __name__ == '__main__':
         ]
 
         for video_name in video_name_lst:
-            gtg = GrandTruthGenerator(VideoFrameLabelFactory.create_instance())
-            gtg.dump_grand_truth_dataframe(video_name)
+            gtg = GroundTruthGenerator(VideoFrameLabelFactory.create_instance())
+            gtg.dump_ground_truth_dataframe(video_name)
 
 
     main()

@@ -7,8 +7,8 @@ import process
 logger = app_logging.create_logger(__name__)
 
 
-class ProcessStageUpdateGrandTruth(process.ProcessStage):
-    NAME = 'update-grand-truth'
+class ProcessStageUpdateGroundTruth(process.ProcessStage):
+    NAME = 'update-ground-truth'
     ALIASES = 'ugt',
 
     @classmethod
@@ -30,8 +30,8 @@ class ProcessStageUpdateGrandTruth(process.ProcessStage):
             yield video_name, dir_path, n_sources  # TODO: don't count file, see aggregation result
 
     @classmethod
-    def remove_grand_truth_csvs(cls):
-        root = './label_data/grand_truth'
+    def remove_ground_truth_csvs(cls):
+        root = './label_data/ground_truth'
         import shutil
         try:
             shutil.rmtree(root)
@@ -41,23 +41,23 @@ class ProcessStageUpdateGrandTruth(process.ProcessStage):
     def run(self):
         if self.__clear_old:
             logger.info('Clearing GT dataframes...')
-            self.remove_grand_truth_csvs()
+            self.remove_ground_truth_csvs()
             logger.info('Done')
 
         logger.info('Updating GT dataframes...')
 
-        from util_ground_truth_generator import GrandTruthGenerator
+        from util_ground_truth_generator import GroundTruthGenerator
         from label_manager.frame_label.factory import VideoFrameLabelFactory
 
         fac = VideoFrameLabelFactory.create_instance()
-        gtg = GrandTruthGenerator(fac)
+        gtg = GroundTruthGenerator(fac)
 
         for video_name, _, n_sources in self.list_video_names():
             if n_sources < self.__min_num_sources:
                 logger.warning(f'GT not generated: lack of sources')
                 continue
             try:
-                gtg.dump_grand_truth_dataframe(video_name)
+                gtg.dump_ground_truth_dataframe(video_name)
             except FileNotFoundError as e:
                 logger.warning(f'GT not generated: {e}')
 

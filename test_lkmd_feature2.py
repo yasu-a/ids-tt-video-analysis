@@ -25,7 +25,7 @@ class DumpMotionFeature:
     def __init__(self, video_name, force=False):
         self._video_name = video_name
         self._force = force
-        self._gt_path = os.path.join('./label_data/grand_truth', video_name + '.csv')
+        self._gt_path = os.path.join('label_data/ground_truth', video_name + '.csv')
         self._out_path = os.path.join('features_out', video_name + '.csv')
         os.makedirs(os.path.dirname(self._out_path), exist_ok=True)
 
@@ -34,7 +34,7 @@ class DumpMotionFeature:
         try:
             return pd.read_csv(self._gt_path)
         except FileNotFoundError:
-            raise FeatureDumpFailure('grand truth not found')
+            raise FeatureDumpFailure('ground truth not found')
 
     @functools.cached_property
     def _iter_frame_indexes(self):

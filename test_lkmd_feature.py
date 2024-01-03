@@ -165,7 +165,7 @@ def dump_motion_feature(video_name):
             csv_path = f'features_out/{video_name}.csv'
             if os.path.exists(csv_path):
                 return 'csv exists'
-            df_y = pd.read_csv(os.path.join('./label_data/grand_truth', video_name + '.csv'))
+            df_y = pd.read_csv(os.path.join('label_data/ground_truth', video_name + '.csv'))
             df_x = generate_dataframe(df_y.index).astype(np.float16)
             df = df_x.join(df_y)
             df.to_csv(csv_path)
