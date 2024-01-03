@@ -39,13 +39,13 @@ if __name__ == '__main__':
         play=(0, 0, 192)
     )
 
-    with snp_vf as snp_vf, async_writer.AsyncVideoFrameWriter('out.mp4', fps=4) as vw:
+    with snp_vf as snp_vf, async_writer.AsyncVideoFrameWriter('out.mp4', fps=7) as vw:
         assert isinstance(snp_vf, snp.NumpyStorage)
         fis = snp_vf.get_array('fi', fill_nan=-1)
         target_mask = np.in1d(fis, target_idx_array)
         target_fis = fis[target_mask]
         target_entry_idx = np.arange(len(fis))[target_mask]
-        for fi, ei in tqdm(zip(target_fis, target_entry_idx)):
+        for fi, ei in zip(target_fis, tqdm(target_entry_idx)):
             entry = snp_vf.get_entry(ei)
             assert isinstance(entry, snp_context.SNPEntryVideoFrame)
             img = entry.original.copy()
@@ -55,6 +55,8 @@ if __name__ == '__main__':
             if isinstance(rect, train_input.RectNormalized):
                 rect = rect.to_actual_scaled(width=img.shape[1], height=img.shape[0])
             img = img[rect.index3d]
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            img = cv2.resize(img, None, fx=4, fy=4)
             hw = np.array(img.shape[:2])
             for xi in range(16):
                 for yi in range(16):
@@ -63,10 +65,15 @@ if __name__ == '__main__':
                         continue
                     pt1 = np.array([xi, yi]) / 16 * hw
                     pt2 = pt1 + np.array([dx, dy]) * 200
+                    label = row_y.columns[row_y.astype(bool).iloc[0]][0]
                     cv2.arrowedLine(
                         img,
                         pt1.astype(int),
                         pt2.astype(int),
-                        label_to_color[row_y.columns[row_y.astype(bool).iloc[0]][0]]
+                        label_to_color[label],
+                        thickness=3,
+                        tipLength=0.3
                     )
-            vw.write(img)
+            cv2.putText(img, f'[{label[0].upper()}] {fi}fr {entry.timestamp:.3f}s', (0, 60),
+                        cv2.FONT_HERSHEY_PLAIN, 2, (192, 192, 192), thickness=2)
+            vw.write(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
